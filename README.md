@@ -31,9 +31,30 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` 自主定时唤醒 + 右下角倒计时面板 |
 | **Erdős–Straus 示例** | `examples/erdos-straus-mission/` | 一个 CPU 友好的数学试跑任务种子 |
 
-## 一键安装
+## 安装
 
 要求：Node 20+、DSH 0.1.0-rc.8+、已配置好 LLM provider。
+
+### 方式 A：DSH 插件广场 / 一行命令（只装插件）
+
+本仓库已打 `dsh-plugin` topic，且根目录声明了 `dsh.bundle.patch`，可被插件广场收录。直接：
+
+```bash
+dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
+```
+
+这会一次安装全部三个插件。之后还需要装预设（二选一）：
+
+```bash
+# A1: 从仓库目录复制
+git clone https://github.com/GMH13552/dsh-longrun-suite.git
+cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+
+# A2: 或从 profile 的 node_modules 里复制（版本可能与插件包不同）
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+```
+
+### 方式 B：克隆 + 一键脚本（推荐，插件和预设一起装）
 
 ```bash
 git clone https://github.com/GMH13552/dsh-longrun-suite.git

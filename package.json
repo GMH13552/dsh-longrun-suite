@@ -1,0 +1,39 @@
+{
+  "name": "dsh-longrun-suite",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness long-run mission suite: mission control, Long-Run Captain preset, patched LLM-as-a-Verifier, self-wake timer.",
+  "type": "module",
+  "private": false,
+  "files": [
+    "packages/",
+    "preset/",
+    "examples/",
+    "docs/",
+    "cordis.patch.yml",
+    "install.sh",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "cd packages/dsh-mission-control && node --test test/core.test.mjs"
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "mission",
+    "long-running",
+    "agent",
+    "verification",
+    "llm-as-a-verifier",
+    "replan"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

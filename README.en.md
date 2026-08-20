@@ -26,9 +26,31 @@ This suite fixes that with file-backed mission state, a tiny generic task lifecy
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` self-wake + countdown panel |
 | **Erdős–Straus example** | `examples/erdos-straus-mission/` | CPU-friendly math mission seed |
 
-## One-command install
+## Install
 
 Requirements: Node 20+, DSH 0.1.0-rc.8+, a configured LLM provider.
+
+### Option A: plugin marketplace / one line (plugins only)
+
+The repository carries the `dsh-plugin` topic and a root `dsh.bundle.patch`, so
+it is discoverable by DSH plugin marketplaces:
+
+```bash
+dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
+```
+
+This installs all three plugins at once. Then install the preset (either):
+
+```bash
+# A1: from a clone
+git clone https://github.com/GMH13552/dsh-longrun-suite.git
+cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+
+# A2: from the installed package
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+```
+
+### Option B: clone + one script (recommended; plugins and preset together)
 
 ```bash
 git clone https://github.com/GMH13552/dsh-longrun-suite.git

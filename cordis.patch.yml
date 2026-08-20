@@ -1,0 +1,25 @@
+# dsh-longrun-suite root bundle patch.
+# One repo, three plugins. Relative paths resolve against this package's
+# directory when the suite is installed as a bundle.
+- insert:
+    - id: dsh-mission-control
+      name: ./packages/dsh-mission-control
+    - id: dsh-plugin-llm-verifier
+      name: ./packages/dsh-plugin-llm-verifier
+      config:
+        provider: deepseek-official
+        model: deepseek-v4-pro
+        reasoningEffort: high
+        maxOutputTokens: 32768
+        seed: 0
+        majorityVoting: false
+        rollout:
+          criteria:
+            - name: Specification Adherence
+              description: "Re-read the task and check specific requirements: exact paths, formats, names, and explicit constraints. Did the attempt meet them, or solve a similar but different problem?"
+            - name: Output Match
+              description: "Find the final verification step and compare its actual observed output against what the task requires. Reward attempts whose terminal output literally matches the expected output."
+            - name: Error Signal Detection
+              description: "Scan the trajectory, especially later steps, for unresolved error messages, non-zero exit codes, test failures, or compile errors. Unresolved errors mean the attempt is likely broken even if it claims success."
+    - id: dsh-timer-scheduler-ui
+      name: ./packages/dsh-timer-scheduler-ui
