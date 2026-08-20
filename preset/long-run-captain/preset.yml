@@ -1,0 +1,7 @@
+name: Long-Run Captain
+description: >
+  A general long-running mission preset for DeepSeek Harness: a Captain
+  orchestrates durable missions, adds/replans tasks freely, requires
+  per-task verification plans and independent review, and finishes only after
+  a strict final audit. Requires the dsh-mission-control host plugin for the
+  mission_* tools.

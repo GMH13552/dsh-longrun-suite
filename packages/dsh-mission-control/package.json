@@ -1,0 +1,42 @@
+{
+  "name": "dsh-mission-control",
+  "version": "0.1.0",
+  "description": "A minimal, data-driven mission control for DeepSeek Harness: four lifecycle states, per-task verification plans, structural evidence gates, free replanning, and strict final audit.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./core": "./lib/core.js",
+    "./mission_check": "./bin/mission_check.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "bin",
+    "preset",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/core.test.mjs",
+    "check": "node bin/mission_check.mjs --help"
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "mission",
+    "long-running",
+    "agent",
+    "verification",
+    "replan"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

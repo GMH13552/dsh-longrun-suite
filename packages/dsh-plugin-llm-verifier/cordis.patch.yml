@@ -1,0 +1,22 @@
+# dsh-plugin-llm-verifier bundle patch (longrun fork).
+# Defaults target the official DeepSeek API route; edit provider/model for
+# your own profile. The rollout criteria mirror the reference
+# Terminal-Bench decomposition.
+- insert:
+    - id: llm-verifier
+      name: dsh-plugin-llm-verifier
+      config:
+        provider: deepseek-official
+        model: deepseek-v4-pro
+        reasoningEffort: high
+        maxOutputTokens: 32768
+        seed: 0
+        majorityVoting: false
+        rollout:
+          criteria:
+            - name: Specification Adherence
+              description: "Re-read the task and check specific requirements: exact paths, formats, names, and explicit constraints. Did the attempt meet them, or solve a similar but different problem?"
+            - name: Output Match
+              description: "Find the final verification step and compare its actual observed output against what the task requires. Reward attempts whose terminal output literally matches the expected output."
+            - name: Error Signal Detection
+              description: "Scan the trajectory, especially later steps, for unresolved error messages, non-zero exit codes, test failures, or compile errors. Unresolved errors mean the attempt is likely broken even if it claims success."

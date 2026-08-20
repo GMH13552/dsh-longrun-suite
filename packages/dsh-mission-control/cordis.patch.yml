@@ -1,0 +1,6 @@
+# dsh-mission-control bundle patch: mount the host plugin into the web
+# profile's host composition. The tools are HOST-plane, so they become visible
+# to every agent regardless of preset.
+- insert:
+    - id: dsh-mission-control
+      name: 'dsh-mission-control'
