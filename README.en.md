@@ -1,6 +1,6 @@
 # DSH LongRun Suite — long-running mission tooling for DeepSeek Harness
 
-> One repository for long-horizon autonomous work: mission control, the Long-Run Captain preset, a strict LLM-as-a-Verifier fork, and a self-wake timer. Clone and install.
+> One repository for long-horizon autonomous work: mission control, the Long-Run Captain preset, a strictly reviewed LLM-as-a-Verifier, and a self-wake timer. Clone and install.
 
 [中文 README](README.md) · [Verifier audit notes](docs/llm-verifier-audit.en.md)
 
@@ -22,9 +22,8 @@ This suite fixes that with file-backed mission state, a tiny generic task lifecy
 |---|---|---|
 | **dsh-mission-control** | `packages/dsh-mission-control/` | mission state machine, `mission_*` tools, meta-validator |
 | **Long-Run Captain preset** | `preset/long-run-captain/` | captain persona + protocol skills (web research, adaptive verification, Socratic self-audit, LLM verifier usage) |
-| **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | patched LLM-as-a-Verifier: `verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
+| **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | LLM-as-a-Verifier based on the paper and the upstream DSH plugin, with stricter review and corrections: `verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` self-wake + countdown panel |
-| **Erdős–Straus example** | `examples/erdos-straus-mission/` | CPU-friendly math mission seed |
 
 ## Install
 
@@ -122,7 +121,7 @@ mission_start
 - Default `terminationPolicy=success`: tasks mapped to success criteria must have `outcome=success`
 - `mission_check` validates evidence honesty, not domain correctness
 - `socratic-self-audit` makes producers attack their own work before submission
-- The patched `verify_track` uses the reference implementation's strict calibration prompt and refuses to trust agent narration
+- `verify_track` uses the reference implementation's strict calibration prompt and refuses to trust agent narration; pivot selection and rollout criteria also follow the reference implementation
 
 ## Repository layout
 
@@ -135,10 +134,8 @@ dsh-longrun-suite/
 │   ├── dsh-mission-control/
 │   ├── dsh-plugin-llm-verifier/
 │   └── dsh-timer-scheduler-ui/
-├── preset/
-│   └── long-run-captain/
-└── examples/
-    └── erdos-straus-mission/
+└── preset/
+    └── long-run-captain/
 ```
 
 ## Known limits
@@ -149,9 +146,8 @@ dsh-longrun-suite/
 
 ## Credits
 
-- [LLM-as-a-Verifier](https://github.com/llm-as-a-verifier/llm-as-a-verifier) and its paper
-- [dsh-plugin-llm-verifier](https://github.com/uson1x/dsh-plugin-llm-verifier) (this repo contains a locally patched fork)
-- [dsh-timer-scheduler](https://github.com/GMH13552/dsh-timer-scheduler)
+- The verifier is based on the [LLM-as-a-Verifier](https://github.com/llm-as-a-verifier/llm-as-a-verifier) paper and [dsh-plugin-llm-verifier](https://github.com/uson1x/dsh-plugin-llm-verifier), with stricter review and corrections
+- Self-wake timer based on [dsh-timer-scheduler](https://github.com/GMH13552/dsh-timer-scheduler)
 
 ## License
 

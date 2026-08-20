@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-llm-verifier",
-  "version": "0.8.1-longrun",
-  "description": "LLM-as-a-Verifier for DeepSeek Harness (dsh), longrun fork: continuous reward signals via select / compare / track, strict reference-aligned progress prompt, reference PPT pivot selection",
+  "version": "0.8.1",
+  "description": "LLM-as-a-Verifier for DeepSeek Harness (dsh): continuous reward signals via select / compare / track, with stricter reference-aligned review and corrections",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

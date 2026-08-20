@@ -27,9 +27,8 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 |---|---|---|
 | **dsh-mission-control** | `packages/dsh-mission-control/` | mission 状态机 + `mission_*` 工具 + 元校验器 |
 | **Long-Run Captain 预设** | `preset/long-run-captain/` | 主持人 persona + 协议技能（联网调研、自适应验证、苏格拉底自查、LLM verifier 用法） |
-| **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | LLM-as-a-Verifier 本地修补版：`verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
+| **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | 参考 LLM-as-a-Verifier 论文与上游 DSH 插件、经过更严格审查修正的 LLM 验证器：`verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` 自主定时唤醒 + 右下角倒计时面板 |
-| **Erdős–Straus 示例** | `examples/erdos-straus-mission/` | 一个 CPU 友好的数学试跑任务种子 |
 
 ## 安装
 
@@ -128,7 +127,7 @@ mission_start
 - **完成必须有真实 outcome**：默认 `terminationPolicy=success`，映射到成功标准的任务必须 `outcome=success`
 - **元校验器**：`mission_check` 只检查证据诚实性（缺证据/缺评审/缺 final audit 一律 FAIL）
 - **苏格拉底自查**：提交前用 `socratic-self-audit` 技能攻击自己的结论
-- **严格 verify_track**：本地修补版使用 LLM-as-a-Verifier 参考实现的校准 prompt，不信任 agent 的自我宣称
+- **严格 verify_track**：使用 LLM-as-a-Verifier 参考实现的校准 prompt，不信任 agent 的自我宣称；pivot 选择与 rollout 评分标准也已对齐论文/参考实现
 
 ## 仓库结构
 
@@ -141,10 +140,8 @@ dsh-longrun-suite/
 │   ├── dsh-mission-control/
 │   ├── dsh-plugin-llm-verifier/
 │   └── dsh-timer-scheduler-ui/
-├── preset/
-│   └── long-run-captain/
-└── examples/
-    └── erdos-straus-mission/
+└── preset/
+    └── long-run-captain/
 ```
 
 ## 已知边界
@@ -155,9 +152,8 @@ dsh-longrun-suite/
 
 ## 致谢
 
-- [LLM-as-a-Verifier](https://github.com/llm-as-a-verifier/llm-as-a-verifier) 与论文
-- [dsh-plugin-llm-verifier](https://github.com/uson1x/dsh-plugin-llm-verifier)（本仓库含其本地修补 fork）
-- [dsh-timer-scheduler](https://github.com/GMH13552/dsh-timer-scheduler)
+- 验证器部分参考 [LLM-as-a-Verifier](https://github.com/llm-as-a-verifier/llm-as-a-verifier) 论文与 [dsh-plugin-llm-verifier](https://github.com/uson1x/dsh-plugin-llm-verifier)，并做了更严格的审查与修正
+- 定时唤醒基于 [dsh-timer-scheduler](https://github.com/GMH13552/dsh-timer-scheduler)
 
 ## License
 

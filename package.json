@@ -7,8 +7,6 @@
   "files": [
     "packages/",
     "preset/",
-    "examples/",
-    "docs/",
     "cordis.patch.yml",
     "install.sh",
     "README.md",

@@ -1,1 +1,0 @@
-OK: found decomposition for every 2 <= n <= 2000

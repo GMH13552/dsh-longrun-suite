@@ -7,13 +7,12 @@ A plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 
 The headline feature is `verify_rollout`: ask for something once, and the plugin runs several independent agent attempts in parallel, grades them, and gives you the best one.
 
-> **LongRun fork notice.** This copy is the locally patched fork shipped by
-> dsh-longrun-suite. Changes vs upstream:
-> - `verify_track` uses the reference implementation's strict calibration prompt (observed output over narration, wrong-path plateau, hidden-grader skepticism);
-> - PPT pivot selection uses the reference mean Bradley-Terry preference `w_i/c_i`;
-> - ring-pass odd repetitions swap A/B slots;
-> - default rollout criteria match the reference Terminal-Bench decomposition.
-> See the suite audit notes for details.
+> **审查与修改说明.** 本实现参考 LLM-as-a-Verifier 论文与上游
+> dsh-plugin-llm-verifier，并做了更严格的审查与修正：
+> - `verify_track` 使用参考实现的严格校准 prompt（只信观测输出，不信自我宣称，错误方向应平台化）；
+> - PPT pivot 选择对齐参考实现的 Bradley-Terry 平均偏好 `w_i/c_i`；
+> - 环赛奇数重复交换 A/B 槽位；
+> - rollout 默认使用参考 Terminal-Bench 的三标准分解。
 
 ## Install
 
