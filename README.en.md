@@ -2,7 +2,7 @@
 
 > One repository for long-horizon autonomous work: mission control, the Long-Run Captain preset, a strictly reviewed LLM-as-a-Verifier, and a self-wake timer. Clone and install.
 
-[中文 README](README.md) · [Verifier audit notes](docs/llm-verifier-audit.en.md)
+[中文 README](README.md)
 
 ## Problem
 
@@ -24,66 +24,6 @@ This suite fixes that with file-backed mission state, a tiny generic task lifecy
 | **Long-Run Captain preset** | `preset/long-run-captain/` | captain persona + protocol skills (web research, adaptive verification, Socratic self-audit, LLM verifier usage) |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | LLM-as-a-Verifier based on the paper and the upstream DSH plugin, with stricter review and corrections: `verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` self-wake + countdown panel |
-
-## Install
-
-Requirements: Node 20+, DSH 0.1.0-rc.8+, a configured LLM provider.
-
-### Option A: plugin marketplace / one line (plugins only)
-
-The repository carries the `dsh-plugin` topic and a root `dsh.bundle.patch`, so
-it is discoverable by DSH plugin marketplaces:
-
-```bash
-dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
-```
-
-This installs all three plugins at once. Then install the preset (either):
-
-```bash
-# A1: from a clone
-git clone https://github.com/GMH13552/dsh-longrun-suite.git
-cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
-
-# A2: from the installed package
-cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
-```
-
-### Option B: clone + one script (recommended; plugins and preset together)
-
-```bash
-git clone https://github.com/GMH13552/dsh-longrun-suite.git
-cd dsh-longrun-suite
-./install.sh            # installs into the web profile
-# ./install.sh tui      # another profile
-```
-
-The script:
-
-1. Adds the three plugins to your profile.
-2. Copies `long-run-captain` into `$DSH_HOME/.agent-presets/`.
-3. Prints restart instructions.
-
-Then restart DSH:
-
-```bash
-dsh web
-```
-
-and start a new session with the **Long-Run Captain** preset.
-
-## Manual install
-
-```bash
-dsh plugin --profile web add ./packages/dsh-mission-control
-dsh plugin --profile web add ./packages/dsh-plugin-llm-verifier
-dsh plugin --profile web add ./packages/dsh-timer-scheduler-ui
-
-mkdir -p "$HOME/.dsh/.agent-presets"
-cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
-```
-
-> `dsh-plugin-llm-verifier` defaults to `provider: deepseek-official` and `model: deepseek-v4-pro`. Edit the `llm-verifier` row in your profile `cordis.patch.yml` if your routing differs, or edit `packages/dsh-plugin-llm-verifier/cordis.patch.yml` before installing.
 
 ## Quick start
 
@@ -137,6 +77,63 @@ dsh-longrun-suite/
 └── preset/
     └── long-run-captain/
 ```
+
+## Install
+
+Requirements: Node 20+, DSH 0.1.0-rc.8+, a configured LLM provider.
+
+### Option A: one line (plugins only)
+
+```bash
+dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
+```
+
+This installs all three plugins at once. Then install the preset (either):
+
+```bash
+# A1: from a clone
+git clone https://github.com/GMH13552/dsh-longrun-suite.git
+cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+
+# A2: from the installed package
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+```
+
+### Option B: clone + one script (recommended; plugins and preset together)
+
+```bash
+git clone https://github.com/GMH13552/dsh-longrun-suite.git
+cd dsh-longrun-suite
+./install.sh            # installs into the web profile
+# ./install.sh tui      # another profile
+```
+
+The script:
+
+1. Adds the three plugins to your profile.
+2. Copies `long-run-captain` into `$DSH_HOME/.agent-presets/`.
+3. Prints restart instructions.
+
+Then restart DSH:
+
+```bash
+dsh web
+```
+
+and start a new session with the **Long-Run Captain** preset.
+
+### Manual install
+
+```bash
+dsh plugin --profile web add ./packages/dsh-mission-control
+dsh plugin --profile web add ./packages/dsh-plugin-llm-verifier
+dsh plugin --profile web add ./packages/dsh-timer-scheduler-ui
+
+mkdir -p "$HOME/.dsh/.agent-presets"
+cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
+```
+
+> `dsh-plugin-llm-verifier` defaults to `provider: deepseek-official` and `model: deepseek-v4-pro`. Edit the `llm-verifier` row in your profile `cordis.patch.yml` if your routing differs, or edit `packages/dsh-plugin-llm-verifier/cordis.patch.yml` before installing.
 
 ## Known limits
 

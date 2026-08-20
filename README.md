@@ -1,8 +1,8 @@
 # DSH LongRun Suite — DeepSeek Harness 长期任务套件
 
-> 一个仓库装齐：长期自主任务管理器（mission-control）+ 长跑主持人预设（Long-Run Captain）+ 严格 LLM 验证器（LLM-as-a-Verifier 修补版）+ 自主定时唤醒（timer scheduler）。克隆即用。
+> 一个仓库装齐：长期自主任务管理器（mission-control）+ 长跑主持人预设（Long-Run Captain）+ 严格审查修正的 LLM 验证器 + 自主定时唤醒（timer scheduler）。克隆即用。
 
-[English README](README.en.md) · [插件核验说明](docs/llm-verifier-audit.zh.md)
+[English README](README.en.md)
 
 ## 这个仓库解决什么问题
 
@@ -29,67 +29,6 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 | **Long-Run Captain 预设** | `preset/long-run-captain/` | 主持人 persona + 协议技能（联网调研、自适应验证、苏格拉底自查、LLM verifier 用法） |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | 参考 LLM-as-a-Verifier 论文与上游 DSH 插件、经过更严格审查修正的 LLM 验证器：`verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` 自主定时唤醒 + 右下角倒计时面板 |
-
-## 安装
-
-要求：Node 20+、DSH 0.1.0-rc.8+、已配置好 LLM provider。
-
-### 方式 A：DSH 插件广场 / 一行命令（只装插件）
-
-本仓库已打 `dsh-plugin` topic，且根目录声明了 `dsh.bundle.patch`，可被插件广场收录。直接：
-
-```bash
-dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
-```
-
-这会一次安装全部三个插件。之后还需要装预设（二选一）：
-
-```bash
-# A1: 从仓库目录复制
-git clone https://github.com/GMH13552/dsh-longrun-suite.git
-cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
-
-# A2: 或从 profile 的 node_modules 里复制（版本可能与插件包不同）
-cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
-```
-
-### 方式 B：克隆 + 一键脚本（推荐，插件和预设一起装）
-
-```bash
-git clone https://github.com/GMH13552/dsh-longrun-suite.git
-cd dsh-longrun-suite
-./install.sh            # 默认安装到 web profile
-# ./install.sh tui      # 安装到其他 profile
-```
-
-安装脚本会：
-
-1. 把三个插件加入你的 profile；
-2. 把 `long-run-captain` 预设复制到 `$DSH_HOME/.agent-presets/`；
-3. 打印重启提示。
-
-重启 DSH：
-
-```bash
-dsh web
-```
-
-新建会话时选择 **Long-Run Captain** 预设即可。
-
-## 手动安装
-
-等价命令：
-
-```bash
-dsh plugin --profile web add ./packages/dsh-mission-control
-dsh plugin --profile web add ./packages/dsh-plugin-llm-verifier
-dsh plugin --profile web add ./packages/dsh-timer-scheduler-ui
-
-mkdir -p "$HOME/.dsh/.agent-presets"
-cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
-```
-
-> `dsh-plugin-llm-verifier` 默认使用 `provider: deepseek-official` + `model: deepseek-v4-pro`。如果你的模型路由不同，改 profile 的 `cordis.patch.yml` 中 `llm-verifier` 行的 `provider` / `model`，或者改本仓库 `packages/dsh-plugin-llm-verifier/cordis.patch.yml` 后重新安装。
 
 ## 快速开始
 
@@ -143,6 +82,65 @@ dsh-longrun-suite/
 └── preset/
     └── long-run-captain/
 ```
+
+## 安装
+
+要求：Node 20+、DSH 0.1.0-rc.8+、已配置好 LLM provider。
+
+### 方式 A：一行命令（只装插件）
+
+```bash
+dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
+```
+
+这会一次安装全部三个插件。之后还需要装预设（二选一）：
+
+```bash
+# A1: 从仓库目录复制
+git clone https://github.com/GMH13552/dsh-longrun-suite.git
+cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+
+# A2: 或从 profile 的 node_modules 里复制（版本可能与插件包不同）
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+```
+
+### 方式 B：克隆 + 一键脚本（推荐，插件和预设一起装）
+
+```bash
+git clone https://github.com/GMH13552/dsh-longrun-suite.git
+cd dsh-longrun-suite
+./install.sh            # 默认安装到 web profile
+# ./install.sh tui      # 安装到其他 profile
+```
+
+安装脚本会：
+
+1. 把三个插件加入你的 profile；
+2. 把 `long-run-captain` 预设复制到 `$DSH_HOME/.agent-presets/`；
+3. 打印重启提示。
+
+重启 DSH：
+
+```bash
+dsh web
+```
+
+新建会话时选择 **Long-Run Captain** 预设即可。
+
+### 手动安装
+
+等价命令：
+
+```bash
+dsh plugin --profile web add ./packages/dsh-mission-control
+dsh plugin --profile web add ./packages/dsh-plugin-llm-verifier
+dsh plugin --profile web add ./packages/dsh-timer-scheduler-ui
+
+mkdir -p "$HOME/.dsh/.agent-presets"
+cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
+```
+
+> `dsh-plugin-llm-verifier` 默认使用 `provider: deepseek-official` + `model: deepseek-v4-pro`。如果你的模型路由不同，改 profile 的 `cordis.patch.yml` 中 `llm-verifier` 行的 `provider` / `model`，或者改本仓库 `packages/dsh-plugin-llm-verifier/cordis.patch.yml` 后重新安装。
 
 ## 已知边界
 
