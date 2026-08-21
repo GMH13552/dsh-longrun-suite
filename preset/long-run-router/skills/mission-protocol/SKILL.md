@@ -188,6 +188,20 @@ following `purpose-bounded-search`:
 - save tempting but off-purpose ideas to `maybe-later.md` instead of letting
   them redirect the mission.
 
+## 3.6 Explore–refine rhythm
+
+At start, when stuck, and before major review, run the expand–refine rhythm:
+
+```text
+广撒网 EXPAND（3–5 个不同角度的并行子代理）
+→ 精细化 REFINE（verifier / reviewer 排名，留下 1–2 个）
+→ 精确派发 winner
+→ 卡住就再次 EXPAND
+```
+
+The Captain coordinates the waves but never does the candidate work itself.
+Losers go to `maybe-later.md`, not into the plan. See `explore-refine-rhythm`.
+
 ## 4. Final completion
 
 Completion is strict:
