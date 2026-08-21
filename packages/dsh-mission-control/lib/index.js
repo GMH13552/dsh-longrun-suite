@@ -141,7 +141,16 @@ export function apply(ctx) {
     output: textOutput('mission_start result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = createMission(args)
+      // The model-facing schema is snake_case; core.js is camelCase.
+      // Map explicitly so no future schema edit can silently drop a field.
+      const mission = createMission({
+        goal: args.goal,
+        successCriteria: args.success_criteria,
+        title: args.title,
+        budget: args.budget,
+        missionId: args.mission_id,
+        terminationPolicy: args.termination_policy,
+      })
       saveMission(cwd, mission)
       return `Mission created: ${mission.id}\n\n${statusText(mission)}`
     },

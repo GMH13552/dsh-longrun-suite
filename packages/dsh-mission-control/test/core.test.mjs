@@ -162,3 +162,15 @@ test('checkMission rejects accepted task missing required evidence', () => {
   const check = checkMission(m)
   assert.equal(check.ok, true) // still open/needs_review, not an inconsistent accepted state
 })
+
+test('createMission tolerates snake_case success_criteria as defensive fallback', () => {
+  const m = createMission({
+    goal: 'g',
+    success_criteria: ['criterion one'],
+    missionId: 'regression-mission',
+    terminationPolicy: 'budget-or-success',
+  })
+  assert.deepEqual(m.successCriteria, ['criterion one'])
+  assert.equal(m.id, 'regression-mission')
+  assert.equal(m.terminationPolicy, 'budget-or-success')
+})

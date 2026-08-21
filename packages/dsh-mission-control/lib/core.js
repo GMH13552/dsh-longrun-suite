@@ -16,7 +16,10 @@
 
 export const TASK_STATUSES = ['open', 'active', 'needs_review', 'accepted', 'rejected']
 
-export function createMission({ goal, successCriteria = [], title, budget = {}, missionId, terminationPolicy = 'success' }) {
+export function createMission({ goal, successCriteria = [], success_criteria = null, title, budget = {}, missionId, terminationPolicy = 'success' }) {
+  if (!Array.isArray(successCriteria) || successCriteria.length === 0) {
+    successCriteria = Array.isArray(success_criteria) ? success_criteria : []
+  }
   if (typeof goal !== 'string' || goal.trim() === '') {
     throw new Error('mission_start requires a non-empty goal string')
   }
