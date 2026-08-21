@@ -214,6 +214,7 @@ export function apply(ctx) {
               title: { type: 'string', description: 'Task title.' },
               acceptance: { type: 'array', items: { type: 'string' }, description: 'Acceptance criteria that must be satisfied before review.' },
               dependencies: { type: 'array', items: { type: 'string' }, description: 'Task ids that must be accepted first.' },
+              assignee: { type: 'string', description: 'Planned executor role (e.g. researcher / engineer / reviewer / final_reviewer). Default substantive work to a subagent; captain only for bookkeeping/synthesis.' },
               replaces: { type: 'string', description: 'Optional id of a rejected task this new task supersedes. The rejected task will be marked superseded and can no longer block completion.' },
               verificationPlan: {
                 type: 'object',

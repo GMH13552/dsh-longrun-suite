@@ -95,11 +95,16 @@ export function addTask(mission, task) {
     old.supersededBy = id
     old.updatedAt = Date.now()
   }
+  if (task.assignee !== undefined && task.assignee !== null) {
+    if (typeof task.assignee !== 'string' || task.assignee.trim() === '') {
+      throw new Error(`task "${task.title}" assignee must be a non-empty string when provided`)
+    }
+  }
   mission.tasks[id] = {
     id,
     title: String(task.title).trim(),
     status: 'open',
-    assignee: null,
+    assignee: task.assignee ? String(task.assignee).trim() : null,
     dependencies: Array.isArray(task.dependencies) ? task.dependencies.map(String) : [],
     acceptance: task.acceptance.map(String),
     verificationPlan,
@@ -164,8 +169,11 @@ export function claimTask(mission, taskId, assignee) {
   if (unsatisfied.length > 0) {
     throw new Error(`task ${taskId} dependencies not accepted: ${unsatisfied.join(', ')}`)
   }
+  if (task.assignee && assignee && assignee !== task.assignee) {
+    throw new Error(`task ${taskId} was planned for assignee "${task.assignee}", cannot claim as "${assignee}"`)
+  }
   task.status = 'active'
-  task.assignee = assignee || 'captain'
+  task.assignee = task.assignee || assignee || 'captain'
   task.updatedAt = Date.now()
   mission.updatedAt = Date.now()
   journal(mission, 'task-claimed', `${taskId} -> ${task.assignee}`)

@@ -163,6 +163,17 @@ test('checkMission rejects accepted task missing required evidence', () => {
   assert.equal(check.ok, true) // still open/needs_review, not an inconsistent accepted state
 })
 
+test('planned assignee is enforced at claim time', () => {
+  const m = createMission({ goal: 'g', successCriteria: ['c'] })
+  addTasks(m, [
+    { id: 't-01', title: 'Do work', assignee: 'researcher', acceptance: ['a'], verificationPlan: {} },
+  ])
+  assert.equal(m.tasks['t-01'].assignee, 'researcher')
+  assert.throws(() => claimTask(m, 't-01', 'captain'), /planned for assignee/)
+  claimTask(m, 't-01', 'researcher')
+  assert.equal(m.tasks['t-01'].assignee, 'researcher')
+})
+
 test('createMission tolerates snake_case success_criteria as defensive fallback', () => {
   const m = createMission({
     goal: 'g',

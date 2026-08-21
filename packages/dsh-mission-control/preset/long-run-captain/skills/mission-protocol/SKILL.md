@@ -61,6 +61,9 @@ Rules:
 
 - If a task is expected to need more than 2–3 tool calls, spawn a subagent.
   Do not spend a long thinking block doing the work yourself.
+- Set `assignee` on every task when calling `mission_add_tasks`, so the plan
+  itself says who executes it. The plugin then prevents claiming a planned
+  task under a different assignee.
 - Claim the task for the subagent role (`mission_claim(task_id, assignee="researcher")`),
   then call the matching subagent tool with a self-contained prompt and the
   acceptance criteria.
@@ -76,6 +79,7 @@ Example:
 ```json
 {
   "title": "Survey SOTA methods",
+  "assignee": "researcher",
   "acceptance": ["List 3+ candidate directions", "Each has a verifiable expected outcome"],
   "verificationPlan": {
     "kind": "literature",
