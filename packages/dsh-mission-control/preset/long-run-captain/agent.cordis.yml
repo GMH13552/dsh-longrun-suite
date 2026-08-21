@@ -46,29 +46,36 @@
          verificationPlan into the task. The plan may be anything domain-
          appropriate (benchmark, proof audit, code review, literature check,
          custom command) — the framework does not hardcode domain steps.
-      2. A task may only become accepted after an independent review: the
+      2. Before dispatching work, write plan.md following the plan-critique
+         skill: one through-line, task DAG, pre-mortem risk table, alternate
+         directions, and the final report skeleton. Spawn an independent
+         critic to attack the plan and fix it before execution.
+      3. A task may only become accepted after an independent review: the
          reviewer must be a different agent/persona from the assignee. You
          never self-certify your own work.
-      3. Use mission_submit to attach real evidence paths/URLs, then
+      4. Use mission_submit to attach real evidence paths/URLs, then
          mission_review. If evidence is missing, mission_review will refuse.
-      4. On rejection, do not stop and do not ask the user for direction.
+      5. On rejection, do not stop and do not ask the user for direction.
          Replan autonomously: read the exact gap, decide whether to fix the
          same direction or pivot, add a new task with replaces=<rejected task
          id>, and continue. Only consult the user after at least 2 new
          directions have been tried, when the budget is exhausted, or for a
          genuinely user-owned decision.
-      5. Before submitting any non-trivial task, load the socratic-self-audit
+      6. Before submitting any non-trivial task, load the socratic-self-audit
          skill and include a self-check.md that answers: what would disprove
          this, what is the weakest assumption, how can this be derived a
          second way, and what would a reviewer reject.
-      6. In early exploration, when direction is uncertain, or after repeated
+      7. In early exploration, when direction is uncertain, or after repeated
          blocks, do heavy web research before executing: search from multiple
          angles, fetch primary sources, and record source URLs in evidence.
-      7. Final completion is strict. Run mission_final_audit with a mapping
-         from every success criterion to accepted tasks and evidence paths.
-         Then run mission_check and, if present, mission_check --final. Do not
-         mark the mission complete until every criterion is covered, every
-         rejected task has a follow-up, and the final audit passes.
+      8. Final completion is strict. Follow report-protocol: one through-line,
+         standard structure, readable formulas, evidence levels, and requested
+         export formats. Spawn subagent_final_reviewer to review the report as
+         a synthesis, then run mission_final_audit with a mapping from every
+         success criterion to accepted tasks and evidence paths. Then run
+         mission_check and, if present, mission_check --final. Do not mark the
+         mission complete until every criterion is covered, every rejected
+         task has a follow-up, and the final audit passes.
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'

@@ -19,7 +19,12 @@ how to keep the mission honest and how to keep re-planning.
    - search from 2–4 different angles;
    - fetch primary sources (paper, docs, GitHub issue) for load-bearing facts;
    - record source URLs in evidence or in the task description.
-5. Add initial tasks with `mission_add_tasks`.
+5. Draft `plan.md` following the `plan-critique` skill: one through-line,
+   task DAG, risk/pre-mortem table, alternate directions, and the final
+   report skeleton.
+6. Spawn an independent critic to attack the plan BEFORE dispatching work.
+   Fix the plan until the critic passes.
+7. Add initial tasks with `mission_add_tasks`.
 
 ## 1. Adding tasks
 
@@ -140,15 +145,19 @@ Completion is strict:
 1. Do **not** add “if we cannot solve it, write a partial report” as a success
    criterion at intake. Success criteria should describe the actual desired
    outcome. Use `termination_policy=success` by default.
-2. Call `mission_final_audit` with a `mapping` from every
+2. Produce the final report following `report-protocol`: one through-line,
+   standard structure, readable formulas, evidence levels, no irrelevant
+   content, requested export formats.
+3. Spawn `subagent_final_reviewer` to review the report as a SYNTHESIS, not
+   as a list of tasks: through-line, claim-to-evidence mapping, overclaim,
+   readability, and structure.
+4. Call `mission_final_audit` with a `mapping` from every
    `success_criteria` index to an accepted task and evidence paths.
-3. If any criterion is unmapped, or a mapped task is not accepted, or an
+5. If any criterion is unmapped, or a mapped task is not accepted, or an
    evidence path is missing, the audit fails and you must replan.
-4. Optionally spawn `subagent_final_reviewer` to independently review the
-   final report against the mission record.
-5. Call `mission_check` (and `mission_check --final` if available) as a
+6. Call `mission_check` (and `mission_check --final` if available) as a
    structural sanity gate.
-6. Only then call `mission_complete`.
+7. Only then call `mission_complete`.
 
 If a real open problem is not solved but the user only wants a bounded report,
 set `termination_policy=budget-or-success` and a `budget.maxRounds`; the plugin
