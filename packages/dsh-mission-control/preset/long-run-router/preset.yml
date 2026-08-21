@@ -1,0 +1,7 @@
+name: Long-Run Captain Router
+description: >
+  Long-Run Captain mission framework combined with the router-standard
+  reasoning-mode router. First turn uses the RL-shaped minimal surface
+  (shell + editor); after the first tool call the full Captain persona,
+  protocol skills, and full tool catalog are restored. Applies to both the
+  root session and subagents composed from this preset.
