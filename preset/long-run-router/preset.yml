@@ -1,7 +1,7 @@
-name: Long-Run Captain Router
+name: Long-Run Captain
 description: >
-  Long-Run Captain mission framework combined with the router-standard
-  reasoning-mode router. First turn uses the RL-shaped minimal surface
-  (shell + editor); after the first tool call the full Captain persona,
-  protocol skills, and full tool catalog are restored. Applies to both the
-  root session and subagents composed from this preset.
+  A general long-running mission preset for DeepSeek Harness: a Captain
+  orchestrates durable missions, adds/replans tasks freely, requires
+  per-task verification plans and independent review, and finishes only after
+  a strict final audit. Requires the dsh-mission-control host plugin for the
+  mission_* tools.

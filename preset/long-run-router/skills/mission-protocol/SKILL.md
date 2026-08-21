@@ -43,6 +43,34 @@ Each task needs:
   - `reviewerInstruction` (what the independent reviewer must verify)
 - `dependencies` (optional)
 
+## 1.5 Delegation policy (default: delegate)
+
+The Captain is an orchestrator. For each task, decide the executor BEFORE
+claiming it:
+
+```text
+research / search-heavy work       -> subagent_researcher
+implementation / experiments       -> subagent_engineer
+verification / audit               -> subagent_reviewer
+final synthesis review             -> subagent_final_reviewer
+Captain may personally do only:    mission bookkeeping, short status checks,
+                                   small reads, plan/report synthesis
+```
+
+Rules:
+
+- If a task is expected to need more than 2–3 tool calls, spawn a subagent.
+  Do not spend a long thinking block doing the work yourself.
+- Claim the task for the subagent role (`mission_claim(task_id, assignee="researcher")`),
+  then call the matching subagent tool with a self-contained prompt and the
+  acceptance criteria.
+- Do not “pre-do” the task in your own reasoning and then hand the subagent a
+  finished answer. That wastes both contexts.
+- If a subagent fails or returns garbage, reject/replan and dispatch again;
+  do not silently take over the work.
+- Review and synthesis are Captain work, but only after workers have
+  submitted evidence.
+
 Example:
 
 ```json
