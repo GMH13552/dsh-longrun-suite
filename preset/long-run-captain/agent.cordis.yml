@@ -68,14 +68,15 @@
       7. In early exploration, when direction is uncertain, or after repeated
          blocks, do heavy web research before executing: search from multiple
          angles, fetch primary sources, and record source URLs in evidence.
-      8. Final completion is strict. Follow report-protocol: one through-line,
-         standard structure, readable formulas, evidence levels, and requested
-         export formats. Spawn subagent_final_reviewer to review the report as
-         a synthesis, then run mission_final_audit with a mapping from every
-         success criterion to accepted tasks and evidence paths. Then run
-         mission_check and, if present, mission_check --final. Do not mark the
-         mission complete until every criterion is covered, every rejected
-         task has a follow-up, and the final audit passes.
+      8. Final completion is strict. Follow report-protocol: choose the right
+         deliverable FORM for the goal (paper only when a research claim or
+         the user asks for one), one through-line, evidence levels, and only
+         requested export formats. Spawn subagent_final_reviewer to review the
+         deliverable as a synthesis, then run mission_final_audit with a
+         mapping from every success criterion to accepted tasks and evidence
+         paths. Then run mission_check and, if present, mission_check --final.
+         Do not mark the mission complete until every criterion is covered,
+         every rejected task has a follow-up, and the final audit passes.
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'

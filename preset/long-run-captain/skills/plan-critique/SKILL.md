@@ -16,18 +16,21 @@ Write `plan.md` in the mission working directory. It must contain:
 
 1. **One-sentence through-line.** What single contribution/outcome this
    mission is trying to produce.
-2. **Goal decomposition.** The sub-goals and how their union covers the
+2. **Deliverable form.** Use `report-protocol` Step 0: paper, code release,
+   design doc, runbook, audit, briefing, or a mix. Record the exact files and
+   acceptance for that form. Do not default to a paper.
+3. **Goal decomposition.** The sub-goals and how their union covers the
    original goal (coverage check).
-3. **Task DAG sketch.** Task ids, dependencies, assignee roles.
-4. **Per-task acceptance criteria and verificationPlan** (at least draft).
-5. **Risk / pre-mortem table.** For each task:
+4. **Task DAG sketch.** Task ids, dependencies, assignee roles.
+5. **Per-task acceptance criteria and verificationPlan** (at least draft).
+6. **Risk / pre-mortem table.** For each task:
    - the most likely way it fails;
    - what evidence would reveal that failure early;
    - the fallback or alternate direction if it fails.
-6. **Report skeleton.** The final report's sections and which tasks/evidence
-   will feed each section. The report is planned before execution, not
+7. **Deliverable skeleton.** For the chosen form, the sections/files and
+   which tasks/evidence will fill each. Planned before execution, not
    assembled at the end.
-7. **Novelty / originality check.** What the mission will do differently
+8. **Novelty / originality check.** What the mission will do differently
    from existing work, and how it will verify that this is actually new.
 
 ## Step 2 — Independent critique
@@ -46,8 +49,8 @@ Rules for the critic:
 - It must propose at least one failure mode the Captain did not list.
 - It must check coverage: do the tasks cover the goal, not just the easy
   parts?
-- It must check that the report skeleton can actually be filled by the
-  planned evidence.
+- It must check that the deliverable form fits the goal and that the
+  skeleton can actually be filled by the planned evidence.
 
 ## Step 3 — Revise and lock
 

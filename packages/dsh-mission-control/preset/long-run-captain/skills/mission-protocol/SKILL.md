@@ -12,19 +12,23 @@ how to keep the mission honest and how to keep re-planning.
 ## 0. Intake
 
 1. Restate the user's goal precisely.
-2. Write 1+ verifiable `success_criteria` (not "improve the model" but
+2. Decide the deliverable form using `report-protocol` Step 0: paper,
+   code release, design doc, runbook, audit, briefing, or a mix. Do NOT
+   default to a paper unless the goal is a research claim or the user asked
+   for one. Record the form in the success criteria.
+3. Write 1+ verifiable `success_criteria` (not "improve the model" but
    "benchmark A +3% at same seed and benchmark B no regression").
-3. Call `mission_start` with `goal`, `success_criteria`, optional `budget`.
-4. Do early web research before committing to a plan:
+4. Call `mission_start` with `goal`, `success_criteria`, optional `budget`.
+5. Do early web research before committing to a plan:
    - search from 2–4 different angles;
    - fetch primary sources (paper, docs, GitHub issue) for load-bearing facts;
    - record source URLs in evidence or in the task description.
-5. Draft `plan.md` following the `plan-critique` skill: one through-line,
-   task DAG, risk/pre-mortem table, alternate directions, and the final
-   report skeleton.
-6. Spawn an independent critic to attack the plan BEFORE dispatching work.
+6. Draft `plan.md` following the `plan-critique` skill: one through-line,
+   task DAG, risk/pre-mortem table, alternate directions, and the
+   deliverable contract (exact files + acceptance for the chosen form).
+7. Spawn an independent critic to attack the plan BEFORE dispatching work.
    Fix the plan until the critic passes.
-7. Add initial tasks with `mission_add_tasks`.
+8. Add initial tasks with `mission_add_tasks`.
 
 ## 1. Adding tasks
 
@@ -145,12 +149,13 @@ Completion is strict:
 1. Do **not** add “if we cannot solve it, write a partial report” as a success
    criterion at intake. Success criteria should describe the actual desired
    outcome. Use `termination_policy=success` by default.
-2. Produce the final report following `report-protocol`: one through-line,
-   standard structure, readable formulas, evidence levels, no irrelevant
-   content, requested export formats.
-3. Spawn `subagent_final_reviewer` to review the report as a SYNTHESIS, not
-   as a list of tasks: through-line, claim-to-evidence mapping, overclaim,
-   readability, and structure.
+2. Produce the deliverable agreed at intake, following `report-protocol`:
+   the right FORM (paper, code, runbook, audit, briefing, ...), one
+   through-line, evidence levels, no irrelevant content, and only the export
+   formats that were requested.
+3. Spawn `subagent_final_reviewer` to review the deliverable as a SYNTHESIS,
+   not as a list of tasks: right form for the goal, through-line,
+   claim-to-evidence mapping, usability, overclaim, readability.
 4. Call `mission_final_audit` with a `mapping` from every
    `success_criteria` index to an accepted task and evidence paths.
 5. If any criterion is unmapped, or a mapped task is not accepted, or an
