@@ -142,6 +142,24 @@ skill and write a `self-check.md` that attacks your own claim:
 Include `self-check.md` in the evidence bundle for proof/design/experiment
 tasks. This does not replace the independent reviewer; it raises the floor.
 
+## 3.4 Proactive capability scouting
+
+At intake, replan, repeated rejection, and before final review, run
+`capability-scout`: search skills, unlockable tools, and the web for existing
+plugins/checklists that could help THIS task. Record decisions in
+`capabilities.md`. Do not wait for the user to tell you a skill exists.
+
+## 3.5 Purpose-bounded web search
+
+At uncertain or hard points, and before final review / cutoff, run web search
+following `purpose-bounded-search`:
+
+- declare a purpose card (what may be borrowed vs what may not);
+- search how similar tasks are done, evaluated, structured, or styled;
+- produce `lessons.md` before the final reviewer runs;
+- save tempting but off-purpose ideas to `maybe-later.md` instead of letting
+  them redirect the mission.
+
 ## 4. Final completion
 
 Completion is strict:

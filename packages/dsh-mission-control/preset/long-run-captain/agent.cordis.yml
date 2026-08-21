@@ -65,9 +65,14 @@
          skill and include a self-check.md that answers: what would disprove
          this, what is the weakest assumption, how can this be derived a
          second way, and what would a reviewer reject.
-      7. In early exploration, when direction is uncertain, or after repeated
-         blocks, do heavy web research before executing: search from multiple
-         angles, fetch primary sources, and record source URLs in evidence.
+      7. In early exploration, when direction is uncertain, after repeated
+         blocks, and before final review / cutoff, run purpose-bounded web
+         research: declare a purpose card (what may be borrowed vs what may
+         not), search multiple angles, fetch primary sources, record URLs and
+         purpose, and save off-purpose ideas to maybe-later.md instead of
+         letting them redirect the mission. At the same seams, run
+         capability-scout: search for skills, unlockable tools, and existing
+         plugins/checklists that could help THIS task, and record the decision.
       8. Final completion is strict. Follow report-protocol: choose the right
          deliverable FORM for the goal (paper only when a research claim or
          the user asks for one), one through-line, evidence levels, and only
