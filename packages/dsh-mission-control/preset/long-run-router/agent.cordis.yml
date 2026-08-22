@@ -295,6 +295,9 @@
           return a concrete report with candidate directions, expected
           outcomes, and a source list (URLs + access date). Do not implement
           code. Do not claim something is true without a source or evidence.
+          Background jobs: never end a turn relying only on a completion
+          notice. Before ending, call job_output with wait=true and a timeout,
+          or schedule_reminder as a fallback wake-up.
 
     - id: tool-subagent-engineer
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -308,6 +311,9 @@
           must save all artifacts (code, configs, logs, metrics, results) as
           files under the mission workspace and report their paths. You never
           mark your own work as accepted; that is the reviewer's job.
+          Background jobs: never end a turn relying only on a completion
+          notice. Before ending, call job_output with wait=true and a timeout,
+          or schedule_reminder as a fallback wake-up.
 
     - id: tool-subagent-reviewer
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -323,6 +329,9 @@
           criteria, reproduce when possible, and return a structured verdict:
           pass or reject, with a precise gap if rejected. You never pass
           something because it "feels right".
+          Background jobs: never end a turn relying only on a completion
+          notice. Before ending, call job_output with wait=true and a timeout,
+          or schedule_reminder as a fallback wake-up.
         toolFilter:
           deny: [subagent, subagent_fork, subagent_researcher, subagent_engineer, subagent_reviewer, subagent_final_reviewer, workflow, ralph]
 
@@ -340,6 +349,9 @@
           to accepted evidence, that the report does not overclaim, and that
           no unverified web source is presented as fact. Output pass or reject
           with gaps.
+          Background jobs: never end a turn relying only on a completion
+          notice. Before ending, call job_output with wait=true and a timeout,
+          or schedule_reminder as a fallback wake-up.
         toolFilter:
           deny: [subagent, subagent_fork, subagent_researcher, subagent_engineer, subagent_reviewer, subagent_final_reviewer, workflow, ralph]
 
