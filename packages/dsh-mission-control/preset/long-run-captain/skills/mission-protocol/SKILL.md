@@ -71,6 +71,11 @@ Rules:
   finished answer. That wastes both contexts.
 - If a subagent fails or returns garbage, reject/replan and dispatch again;
   do not silently take over the work.
+- After dispatching background subagents, do NOT just end the turn and hope
+  for a completion notice. Before finishing the turn: check `job_list` for
+  the new job ids and set a `schedule_reminder` as a fallback wake-up. If a
+  completion notice never arrives, the reminder lets you re-check instead of
+  stalling forever.
 - Review and synthesis are Captain work, but only after workers have
   submitted evidence.
 

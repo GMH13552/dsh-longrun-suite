@@ -43,43 +43,11 @@ Each task needs:
   - `reviewerInstruction` (what the independent reviewer must verify)
 - `dependencies` (optional)
 
-## 1.5 Delegation policy (default: delegate)
-
-The Captain is an orchestrator. For each task, decide the executor BEFORE
-claiming it:
-
-```text
-research / search-heavy work       -> subagent_researcher
-implementation / experiments       -> subagent_engineer
-verification / audit               -> subagent_reviewer
-final synthesis review             -> subagent_final_reviewer
-Captain may personally do only:    mission bookkeeping, short status checks,
-                                   small reads, plan/report synthesis
-```
-
-Rules:
-
-- If a task is expected to need more than 2–3 tool calls, spawn a subagent.
-  Do not spend a long thinking block doing the work yourself.
-- Set `assignee` on every task when calling `mission_add_tasks`, so the plan
-  itself says who executes it. The plugin then prevents claiming a planned
-  task under a different assignee.
-- Claim the task for the subagent role (`mission_claim(task_id, assignee="researcher")`),
-  then call the matching subagent tool with a self-contained prompt and the
-  acceptance criteria.
-- Do not “pre-do” the task in your own reasoning and then hand the subagent a
-  finished answer. That wastes both contexts.
-- If a subagent fails or returns garbage, reject/replan and dispatch again;
-  do not silently take over the work.
-- Review and synthesis are Captain work, but only after workers have
-  submitted evidence.
-
 Example:
 
 ```json
 {
   "title": "Survey SOTA methods",
-  "assignee": "researcher",
   "acceptance": ["List 3+ candidate directions", "Each has a verifiable expected outcome"],
   "verificationPlan": {
     "kind": "literature",
@@ -191,20 +159,6 @@ following `purpose-bounded-search`:
 - produce `lessons.md` before the final reviewer runs;
 - save tempting but off-purpose ideas to `maybe-later.md` instead of letting
   them redirect the mission.
-
-## 3.6 Explore–refine rhythm
-
-At start, when stuck, and before major review, run the expand–refine rhythm:
-
-```text
-广撒网 EXPAND（3–5 个不同角度的并行子代理）
-→ 精细化 REFINE（verifier / reviewer 排名，留下 1–2 个）
-→ 精确派发 winner
-→ 卡住就再次 EXPAND
-```
-
-The Captain coordinates the waves but never does the candidate work itself.
-Losers go to `maybe-later.md`, not into the plan. See `explore-refine-rhythm`.
 
 ## 4. Final completion
 

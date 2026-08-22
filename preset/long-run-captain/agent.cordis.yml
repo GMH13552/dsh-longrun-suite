@@ -285,6 +285,7 @@
       config:
         provider: spawn
         toolName: subagent_researcher
+        backgroundMode: continuable
         maxDepth: 1
         persona: >-
           You are a research agent. Your job is to investigate a direction:
@@ -298,6 +299,7 @@
       config:
         provider: spawn
         toolName: subagent_engineer
+        backgroundMode: continuable
         maxDepth: 1
         persona: >-
           You are an engineer agent. You implement and run experiments. You
@@ -310,6 +312,7 @@
       config:
         provider: spawn
         toolName: subagent_reviewer
+        backgroundMode: continuable
         maxDepth: 1
         persona: >-
           You are an independent reviewer. You receive only the task
@@ -326,6 +329,7 @@
       config:
         provider: spawn
         toolName: subagent_final_reviewer
+        backgroundMode: continuable
         maxDepth: 1
         persona: >-
           You are the final independent reviewer. You receive the original
