@@ -310,9 +310,6 @@
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
-          Self reminders: do not rely on schedule_reminder to wake yourself
-          after your turn ends; if you need a later wake-up, ask the Captain
-          to schedule it at the mission level.
 
     - id: tool-subagent-engineer
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -329,9 +326,6 @@
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
-          Self reminders: do not rely on schedule_reminder to wake yourself
-          after your turn ends; if you need a later wake-up, ask the Captain
-          to schedule it at the mission level.
 
     - id: tool-subagent-reviewer
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -350,9 +344,6 @@
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
-          Self reminders: do not rely on schedule_reminder to wake yourself
-          after your turn ends; if you need a later wake-up, ask the Captain
-          to schedule it at the mission level.
         toolFilter:
           deny: [subagent, subagent_fork, subagent_researcher, subagent_engineer, subagent_reviewer, subagent_final_reviewer, workflow, ralph]
 
@@ -373,9 +364,6 @@
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
-          Self reminders: do not rely on schedule_reminder to wake yourself
-          after your turn ends; if you need a later wake-up, ask the Captain
-          to schedule it at the mission level.
         toolFilter:
           deny: [subagent, subagent_fork, subagent_researcher, subagent_engineer, subagent_reviewer, subagent_final_reviewer, workflow, ralph]
 
