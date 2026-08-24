@@ -76,6 +76,11 @@ Rules:
   the new job ids and set a `schedule_reminder` as a fallback wake-up. If a
   completion notice never arrives, the reminder lets you re-check instead of
   stalling forever.
+- Wake-up ownership: a subagent's own `schedule_reminder` is NOT reliable
+  after its Activation settles (DSH may reclaim its memory). Any later
+  wake-up the worker needs must be scheduled at the CAPTAIN/mission level;
+  a worker that needs a future wake must report it to the Captain before
+  ending the turn.
 - Review and synthesis are Captain work, but only after workers have
   submitted evidence.
 
