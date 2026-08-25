@@ -236,12 +236,18 @@ export class VerifierEngine {
    * an abort from the caller's signal propagates immediately.
    */
   async #call(system, userText, signal) {
-    try {
-      return await this.#callOnce(system, userText, signal)
-    } catch (error) {
-      if (signal?.aborted || error?.finishKind !== 'aborted') throw error
-      return await this.#callOnce(system, userText, signal)
+    let lastError
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (signal?.aborted) throw lastError || new Error('cancelled')
+      try {
+        return await this.#callOnce(system, userText, signal)
+      } catch (error) {
+        if (error?.finishKind !== 'aborted') throw error
+        lastError = error
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)))
+      }
     }
+    throw lastError
   }
 
   async #callOnce(system, userText, signal) {
@@ -396,8 +402,16 @@ export class VerifierEngine {
         fresh.push([i, j])
       }
       await mapLimit(fresh, 2, async ([i, j]) => {
-        const result = await this.comparePair(task, candidates[i], candidates[j], { signal, alternate, criteria })
-        pairResults.set(pairKey(i, j), { i, j, rewardI: result.rewardA, rewardJ: result.rewardB })
+        try {
+          const result = await this.comparePair(task, candidates[i], candidates[j], { signal, alternate, criteria })
+          pairResults.set(pairKey(i, j), { i, j, rewardI: result.rewardA, rewardJ: result.rewardB })
+        } catch (error) {
+          // Treat a failed pair as a tie so one unstable grading call does not
+          // abort the whole tournament. Mirrors the reference on_error="tie".
+          if (signal?.aborted) throw error
+          console.warn(`${PLUGIN_NAME}: pair ${i}:${j} grading failed, using tie fallback: ${String(error?.message || error)}`)
+          pairResults.set(pairKey(i, j), { i, j, rewardI: 0.5, rewardJ: 0.5, fallback: String(error?.message || error) })
+        }
       })
     }
 
