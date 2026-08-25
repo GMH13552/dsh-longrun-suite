@@ -32,8 +32,12 @@ Do not write one profile from the Captain's own prior. Instead:
    - constraints, pitfalls, failure modes;
    - tools, skills, and verification methods.
    Each candidate may use purpose-bounded web search.
-3. If `verify_select` is available, rank the candidate profiles; otherwise
-   spawn `subagent_reviewer` to rank them.
+3. Rank candidates. By default spawn `subagent_reviewer` to rank them — it is
+   cheaper and more reliable for qualitative documents. Use `verify_select` /
+   `verify_compare` only when there are at most 2–3 candidates and the
+   verifier grading config is light (low reasoning effort, few repetitions,
+   short candidates). Do not run `verify_select` on 5 large documents with
+   the expensive DeepSeek grading profile; it can take 30+ minutes and abort.
 4. Captain synthesizes the strongest parts into ONE authoritative
    `task-profile.md`. Keep the candidates in `profile-candidates/`.
 5. Spawn an independent critic. It attacks the profile: is it the right
