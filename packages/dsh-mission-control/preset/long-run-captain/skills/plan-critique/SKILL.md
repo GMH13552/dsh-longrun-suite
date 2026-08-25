@@ -54,6 +54,13 @@ Rules for the critic:
   parts?
 - It must check that substantive tasks are delegated to subagent roles and
   not silently kept by the Captain.
+- It must check the Core Challenge from task-profile.md is preserved: no
+  lazy shortcut may replace the hard part with "try a few values", omit the
+  hardest module, or over-simplify constraints until the result no longer
+  answers the original task.
+- It must check that the plan is not confusing the three layers:
+  task-profile (quality contract) / domain-playbook (method families,
+  references) / plan+tasks (actual equations, pseudocode, evidence).
 - It must check that the deliverable form fits the goal and that the
   skeleton can actually be filled by the planned evidence.
 

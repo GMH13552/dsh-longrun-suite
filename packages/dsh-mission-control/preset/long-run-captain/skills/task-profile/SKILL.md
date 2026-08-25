@@ -19,6 +19,53 @@ invariants are enforced:
 2. it answers deliverable / audience / success standard;
 3. every subagent and reviewer reads it before working.
 
+## Three-layer split (do not overload the profile)
+
+```text
+task-profile.md        quality contract: intent, audience, success bar,
+                       core challenge, no-lazy list, deliverable form
+                       NO formulas, NO pseudocode, NO implementation details
+
+domain-playbook.md     standard methods for this task family:
+                       algorithm families, exemplars, references,
+                       applicable vs not applicable
+                       high-level method guidance, not project implementation
+
+plan.md + tasks        actual project solution: model equations,
+                       decision variables, pseudocode, task specs,
+                       verificationPlan, evidence paths
+```
+
+Task-profile is about **what the mission owes and where it may not cut
+corners**, not about solving the problem for the workers.
+
+## Core Challenge & No-Lazy list
+
+Every authoritative profile MUST include:
+
+```markdown
+### Core Challenge
+What single hardest part truly defines "we solved this task"? 
+If the deliverable does not address this, it is not the original task.
+
+### Reasonable simplification (allowed)
+- Must be justified;
+- Must be documented in the plan/report;
+- Must not remove the Core Challenge.
+
+### Lazy shortcut (forbidden)
+- Replacing "model/optimization" with "try a few values";
+- Skipping the hardest module and calling the simplified version "done";
+- Simplifying constraints until the result no longer answers the original;
+- Using "time is short" as an unrecorded reason instead of a documented
+  downgrade.
+
+### Minimal evidence for the Core Challenge
+What must be proven/verified before anyone may say the core challenge is done?
+```
+
+The critic MUST attack these items specifically.
+
 ## Phase A — Generate the initial profile (parallel + synthesize)
 
 Do not write one profile from the Captain's own prior. Instead:
@@ -31,7 +78,9 @@ Do not write one profile from the Captain's own prior. Instead:
    - exemplars and their structure/style;
    - constraints, pitfalls, failure modes;
    - tools, skills, and verification methods.
-   Each candidate may use purpose-bounded web search.
+   At least one candidate must focus on: **what is the Core Challenge, what
+   would a lazy version look like, and what evidence proves the core is
+   done**. Each candidate may use purpose-bounded web search.
 3. Rank candidates. By default spawn `subagent_reviewer` to rank them — it is
    cheaper and more reliable for qualitative documents. Use `verify_select` /
    `verify_compare` only when there are at most 2–3 candidates and the
@@ -39,10 +88,13 @@ Do not write one profile from the Captain's own prior. Instead:
    short candidates). Do not run `verify_select` on 5 large documents with
    the expensive DeepSeek grading profile; it can take 30+ minutes and abort.
 4. Captain synthesizes the strongest parts into ONE authoritative
-   `task-profile.md`. Keep the candidates in `profile-candidates/`.
+   `task-profile.md`, including the Core Challenge and No-Lazy list. Keep the
+   candidates in `profile-candidates/`.
 5. Spawn an independent critic. It attacks the profile: is it the right
-   interpretation? Does it miss the audience or success standard? Is the
-   standard approach actually applicable? Fix until pass.
+   interpretation? Does it miss the audience or success standard? Does the
+   Core Challenge match the original goal, or did the plan redefine the task
+   to something easier? Is the standard approach actually applicable? Fix
+   until pass.
 
 ## Phase B — Living updates
 
@@ -76,7 +128,9 @@ Before `mission_final_audit`, run at least one profile round:
 
 1. Spawn 2–3 independent `subagent_researcher` WITH web access. They each
    independently produce a fresh `task-profile-candidate.md` for the SAME
-   original goal, using everything now known.
+   original goal, using everything now known. Each must also re-answer:
+   "Is the current Core Challenge still the right one? Is anything currently
+   treated as a reasonable simplification actually a lazy shortcut?"
 2. Compare each candidate against the current `task-profile.md`. Classify
    every difference:
 
