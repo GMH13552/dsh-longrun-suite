@@ -39,6 +39,46 @@ plan.md + tasks        actual project solution: model equations,
 Task-profile is about **what the mission owes and where it may not cut
 corners**, not about solving the problem for the workers.
 
+## Assumptions register
+
+The profile must include an assumptions register, inspired by keel's Probe
+step. Every load-bearing assumption gets:
+
+```markdown
+### Assumptions
+- A1 [High] <assumption>
+  verification: <command / source / test>
+  status: unverified | verified | rejected
+  verified-by: <subagent or evidence path>
+```
+
+Rules:
+
+- Every `[High]` assumption must be resolved before the tasks that depend on
+  it start.
+- An assumption treated as fact without verification is a plan failure.
+- When a high-risk assumption is rejected, update task-profile.md and replan
+  anything built on it.
+
+## Forbidden moves
+
+Borrowed from the community's "Forbidden moves" lists. The profile must
+contain an explicit forbidden-moves section (generic, not domain-specific):
+
+```text
+- Do not silently drop a reviewer gap; every non-PASS output must be consumed
+  by a follow-up task or a documented decision.
+- Do not mark completion without fresh evidence + covered scope + residual
+  risk.
+- Do not rewrite the task to something easier and call it the original task.
+- Do not claim a fact/result without a traceable source or runnable evidence.
+- Do not let a plan/task proceed while a High assumption is unverified.
+- Do not hide a simplification as "we do it this way" without a reasoned
+  change record.
+```
+
+These are checked by plan-critique and final review.
+
 ## Core Challenge & No-Lazy list
 
 Every authoritative profile MUST include:

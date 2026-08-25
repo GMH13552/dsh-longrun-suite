@@ -58,6 +58,9 @@ Rules for the critic:
   lazy shortcut may replace the hard part with "try a few values", omit the
   hardest module, or over-simplify constraints until the result no longer
   answers the original task.
+- It must check the Forbidden Moves from task-profile.md are not present:
+  no silently dropped reviewer gap, no completion without fresh evidence +
+  covered scope + residual risk, no unverified High assumption driving tasks.
 - It must check that the plan is not confusing the three layers:
   task-profile (quality contract) / domain-playbook (method families,
   references) / plan+tasks (actual equations, pseudocode, evidence).

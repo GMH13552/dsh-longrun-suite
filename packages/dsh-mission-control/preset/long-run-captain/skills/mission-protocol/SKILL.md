@@ -144,6 +144,11 @@ When a task is rejected:
    alternative approaches).
 5. Call `mission_replan` with a note explaining the pivot.
 
+**Gap consumption rule (community practice, not optional):** every
+non-PASS reviewer output must be consumed by a follow-up attempt or an
+explicit documented decision. Silently ignoring a reviewer gap is a gate
+failure, not a step skipped.
+
 Do **not** ask the user for direction after the first rejection. Only ask when:
 
 - the user explicitly asked to be consulted;

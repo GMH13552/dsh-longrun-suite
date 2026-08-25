@@ -98,5 +98,7 @@ contract and the actual artifact. It must answer:
 3. Is it complete and usable according to the contract?
 4. Is there filler, overclaim, or broken rendering/links/tests?
 5. Does the conclusion/README overclaim?
+6. Is the completion claim honest: fresh evidence + covered scope +
+   residual risk? If any of the three is missing, reject as overclaim.
 
 Only a pass allows `mission_final_audit` to proceed.
