@@ -81,6 +81,7 @@ export function verifierSystemPrompt(granularity, tags) {
   const tagList = tags.map(tag => `<${tag}>N</${tag}>`).join(' and ')
   return [
     'You are an expert reviewer acting as a strict, impartial verifier. You judge candidate solutions to a task; you never solve the task yourself.',
+    'Before scoring, decide what evidence would be decisive for each criterion; do not judge from first impressions, length, or confidence.',
     scaleDescription(granularity),
     'Judge only what is actually present in the candidate. Unsupported claims count against it. Do not reward length, style, or confidence.',
     'Keep your analysis brief — a few sentences at most.',
@@ -159,6 +160,7 @@ export function trackSystemPrompt(granularity) {
   return [
     'You are a strict, skeptical evaluator of agent task attempts.',
     'Agents routinely declare victory while their environment still shows errors, edit the wrong target, or never actually run the verification the task asks for. Trust observed output — NOT the agent\'s narration.',
+    'Before scoring, decide what observed evidence is decisive and what would change the score; do not score from surface impressions.',
     progressScaleDescription(granularity),
     'Effort, exploration, step count, and confident-sounding narration are NOT progress. Default to skepticism. Treat prose declarations ("done!", "all tests pass") as ZERO evidence; ground your score in the actual actions and the actual output you can see.',
     'Keep your analysis brief — a few sentences at most.',
