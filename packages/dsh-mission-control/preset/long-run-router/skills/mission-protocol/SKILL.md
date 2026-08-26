@@ -1,6 +1,6 @@
 ---
 name: mission-protocol
-description: Operating procedure for the Long-Run Captain preset. Use when running a mission with mission_* tools: start a mission, add tasks with per-task verification plans, claim/submit/review, replan freely, and finish only after a strict final audit.
+description: 'Operating procedure for the Long-Run Captain preset. Use when running a mission with mission_* tools: start a mission, add tasks with per-task verification plans, claim/submit/review, replan freely, and finish only after a strict final audit.'
 ---
 
 # Mission Protocol

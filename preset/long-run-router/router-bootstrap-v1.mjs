@@ -103,8 +103,18 @@ export function apply(ctx, config) {
 
     if (session.events.some((event) => event.type === 'tool/call')) {
       // long-run-router: after the first durable tool/call expose the full
-      // catalog AND restore the full preset sections (Captain / role personas,
-      // protocol guidance) instead of keeping the stripped first-turn persona.
+      // catalog AND restore the full preset sections. For subagents, remove
+      // the root Captain persona so the child's role persona
+      // (`deployment:persona`) remains authoritative; the root keeps the
+      // full Captain persona.
+      const isSubagent = agent.session.header?.origin === 'subagent' || (agent.options?.subagentDepth ?? 0) > 0
+      if (isSubagent) {
+        return {
+          ...assembled,
+          contexts: [],
+          sections: (assembled.sections || []).filter((section) => section.name !== 'persona'),
+        }
+      }
       return { ...assembled, contexts: [] }
     }
 

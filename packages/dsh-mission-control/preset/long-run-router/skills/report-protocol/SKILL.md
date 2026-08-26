@@ -1,6 +1,6 @@
 ---
 name: report-protocol
-description: Use before finishing a mission to decide and verify the right deliverable form. Domain-neutral: paper, code release, design doc, runbook, audit, analysis summary, or a combination — chosen from the goal, not assumed.
+description: 'Use before finishing a mission to decide and verify the right deliverable form. Domain-neutral: paper, code release, design doc, runbook, audit, analysis summary, or a combination — chosen from the goal, not assumed.'
 ---
 
 # Output Protocol

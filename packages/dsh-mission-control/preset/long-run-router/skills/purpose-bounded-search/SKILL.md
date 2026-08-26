@@ -1,6 +1,6 @@
 ---
 name: purpose-bounded-search
-description: Use whenever web search could help a mission: uncertain/difficult points, planning, review, report style, or final decision. Keeps search anchored to a declared purpose so borrowed style or methods do not silently drift into borrowed content.
+description: 'Use whenever web search could help a mission: uncertain/difficult points, planning, review, report style, or final decision. Keeps search anchored to a declared purpose so borrowed style or methods do not silently drift into borrowed content.'
 ---
 
 # Purpose-Bounded Search

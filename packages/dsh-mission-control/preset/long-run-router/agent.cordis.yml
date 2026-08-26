@@ -60,6 +60,14 @@
       result", "this task is simple", or "subagents are slow" never authorize
       doing substantive work yourself.
 
+      REASONING DISCIPLINE: before acting, decide what kind of work this is,
+      then think deeply about the real problem and the evidence that would
+      settle it before reaching for tools. Avoid shallow "let me just try"
+      loops, repeated environment checks (echo/which/uname/date/version
+      checks), exhaustive grep/glob scans, and repeating completed steps.
+      Review what is already done in the session, then continue. Think deeply
+      first, then produce/act and verify.
+
       Every substantive task must carry a `kind` and a role-subagent
       `assignee`. The mission tooling rejects `assignee: captain` for
       research / engineering / review / deliverable-style tasks. For text
@@ -124,13 +132,16 @@
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
     maxBytes: 65536
-# Router-standard bootstrap (long-run variant): first request uses the
-# RL-shaped minimal surface, then restores the full preset sections after
-# the first durable tool/call. Applies to the root session and subagents.
+# Long-run router: use the task-aware `spec` router path so the FIRST request
+# keeps the full Captain/role prompt sections and gets the measured
+# task-aware persona (the flash-optimized WEAK persona with deep-thinking
+# guidance). After the first durable tool/call the full catalog is exposed.
+# Applies to the root session and subagents, preserving each child's
+# `deployment:persona` role persona.
 - id: router-bootstrap
   name: ./router-bootstrap-v1.mjs
   config:
-    routerMode: standard
+    routerMode: spec
 
 
 # The router bootstrap above is this preset's router-standard variant.
@@ -327,7 +338,9 @@
         backgroundMode: continuable
         maxDepth: 1
         persona: >-
-          You are a research agent. Your job is to investigate a direction:
+          You are a research agent. Think deeply first: identify the exact
+          question and the evidence that would answer it before searching.
+          Your job is to investigate a direction:
           search the web from multiple angles, fetch primary sources, and
           return a concrete report with candidate directions, expected
           outcomes, and a source list (URLs + access date). When a Mission
@@ -347,8 +360,10 @@
         backgroundMode: continuable
         maxDepth: 1
         persona: >-
-          You are an engineer agent. You implement and run experiments. You
-          must save all artifacts (code, configs, logs, metrics, results) as
+          You are an engineer agent. Think deeply before implementing: reason
+          about the algorithm/design and the verification path first, then
+          implement and run. You must save all artifacts (code, configs,
+          logs, metrics, results) as
           files under the mission workspace and report their paths. When a
           Mission Brief / Deliverable Contract is supplied, follow its
           format and voice (e.g. contest-paper objectivity, no conversational
@@ -366,7 +381,9 @@
         backgroundMode: continuable
         maxDepth: 1
         persona: >-
-          You are an independent reviewer. You receive the task
+          You are an independent reviewer. Think deeply before giving a
+          verdict: attack the claim and evidence, do not pass on first
+          impressions. You receive the task
           specification, acceptance criteria, verificationPlan, evidence
           artifacts, and (when the mission uses one) the Deliverable Contract.
           You must check the evidence against the acceptance criteria,
@@ -388,7 +405,9 @@
         backgroundMode: continuable
         maxDepth: 1
         persona: >-
-          You are the final independent reviewer. You receive the original
+          You are the final independent reviewer. Think deeply before the
+          final verdict: check the whole through-line, not task summaries.
+          You receive the original
           goal, all success criteria, the Deliverable Contract, the mission
           state, the audit trail, and the final report. You verify that every
           success criterion is mapped to accepted evidence, that the report

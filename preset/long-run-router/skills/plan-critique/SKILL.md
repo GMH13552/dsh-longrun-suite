@@ -1,6 +1,6 @@
 ---
 name: plan-critique
-description: Use BEFORE executing any mission plan. A domain-neutral pre-mortem protocol: the Captain drafts a plan, then an independent critic subagent attacks it before any worker starts.
+description: 'Use BEFORE executing any mission plan. A domain-neutral pre-mortem protocol: the Captain drafts a plan, then an independent critic subagent attacks it before any worker starts.'
 ---
 
 # Plan Critique

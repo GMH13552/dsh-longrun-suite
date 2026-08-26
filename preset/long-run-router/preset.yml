@@ -1,7 +1,8 @@
 name: Long-Run Captain Router
 description: >
-  Long-Run Captain mission framework combined with the router-standard
-  reasoning-mode router. First turn uses the RL-shaped minimal surface
-  (shell + editor); after the first tool call the full Captain persona,
-  protocol skills, and full tool catalog are restored. Applies to both the
-  root session and subagents composed from this preset.
+  Long-Run Captain mission framework combined with the task-aware
+  reasoning-mode router (spec path). The first request keeps the full
+  Captain/role prompt sections and uses the measured task-aware persona
+  (flash-optimized deep-thinking guidance); after the first tool call the
+  full tool catalog is exposed. Applies to both the root session and
+  subagents composed from this preset, preserving role subagent personas.

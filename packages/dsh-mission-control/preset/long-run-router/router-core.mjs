@@ -172,8 +172,12 @@ export function clamp01(v) {
  * plan state and carries the plan-boundary instructions.
  */
 export function applyPersona(sections, personaText) {
+  // Remove only the deployment's generic `persona` row (the Captain text on the
+  // root). Keep `deployment:persona`, which is the role persona installed by
+  // subagent composition (researcher / engineer / reviewer / final_reviewer);
+  // stripping it disabled role behavior for every child.
   const rest = (sections || []).filter(
-    (section) => section.name !== 'persona' && !/persona/i.test(section.name),
+    (section) => section.name !== 'persona' && section.name !== 'router-persona',
   )
   return [...rest, { name: 'router-persona', text: personaText, order: 0 }]
 }

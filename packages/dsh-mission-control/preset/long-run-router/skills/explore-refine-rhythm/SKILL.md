@@ -1,6 +1,6 @@
 ---
 name: explore-refine-rhythm
-description: Use at mission seams (start, stuck, before review) to run the expand-refine rhythm: cast a wide net of parallel candidate directions, rank and narrow, then run the winner; if it stalls, cast wide again. Domain-neutral.
+description: 'Use at mission seams (start, stuck, before review) to run the expand-refine rhythm: cast a wide net of parallel candidate directions, rank and narrow, then run the winner; if it stalls, cast wide again. Domain-neutral.'
 ---
 
 # Explore–Refine Rhythm
