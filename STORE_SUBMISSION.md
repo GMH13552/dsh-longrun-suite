@@ -57,12 +57,11 @@ install / start / uninstall evidence:
 
 ```bash
 # Create a disposable profile and add the plugin package
-dsh profile create store-test
 dsh plugin --profile store-test add ./packages/dsh-mission-control
 
-# Start the profile once (or run headless smoke), then remove it
-dsh profile run store-test --headless --once "smoke"
-dsh profile delete store-test
+# Start the profile once (headless one-shot), then clean up
+dsh --profile store-test headless "Reply OK"
+rm -rf ~/.dsh/profiles/store-test
 ```
 
 The same procedure applies to the other two packages, substituting the

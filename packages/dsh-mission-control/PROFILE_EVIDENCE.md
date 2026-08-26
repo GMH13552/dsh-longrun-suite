@@ -5,18 +5,17 @@ Status: procedure documented; attach real install/start/uninstall output when a 
 ## Install
 
 ```bash
-dsh profile create store-test
 dsh plugin --profile store-test add ./packages/dsh-mission-control
 ```
 
 ## Start / smoke
 
 ```bash
-dsh profile run store-test --headless --once "load plugin and reply OK"
+dsh --profile store-test headless "load plugin and reply OK"
 ```
 
 ## Uninstall / cleanup
 
 ```bash
-dsh profile delete store-test
+rm -rf ~/.dsh/profiles/store-test
 ```
