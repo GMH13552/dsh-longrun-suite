@@ -67,3 +67,12 @@ rm -rf ~/.dsh/profiles/store-test
 The same procedure applies to the other two packages, substituting the
 package path. Evidence files with concrete outputs should be added to each
 package directory when a real disposable-profile run is performed.
+
+> Environment note: `@deepseek-ai/dsh-headless` depends on
+> `@deepseek-ai/dsh-code-runtime-worker`, which is not currently published to
+> the public npm registry. In an environment where that package is unavailable,
+> a custom `store-test` profile can install the plugin and dump config, but a
+> headless one-shot start cannot be completed through `pnpm` alone. Use the
+> official `web`/`headless` profile or a copy of a fully provisioned DSH
+> profile as the disposable target when recording install/start/uninstall
+> evidence.
