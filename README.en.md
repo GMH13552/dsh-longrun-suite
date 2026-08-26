@@ -25,6 +25,20 @@ This suite fixes that with file-backed mission state, a tiny generic task lifecy
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | LLM-as-a-Verifier based on the paper and the upstream DSH plugin, with stricter review and corrections: `verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` self-wake + countdown panel |
 
+## DSH Store submission
+
+This repository is a monorepo of three independent DSH plugins. Each plugin
+must be submitted with an explicit package path:
+
+| Plugin | Path | Entry ID | Version |
+|---|---|---|---|
+| dsh-mission-control | `packages/dsh-mission-control` | `dsh-mission-control` | 0.2.0 |
+| llm-as-a-verifier | `packages/dsh-plugin-llm-verifier` | `llm-verifier` | 0.9.0 |
+| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.0 |
+
+Every subpackage declares the exact DSH compatibility matrix in `package.json`.
+See [`STORE_SUBMISSION.md`](STORE_SUBMISSION.md).
+
 ## Quick start
 
 In a Long-Run Captain session:

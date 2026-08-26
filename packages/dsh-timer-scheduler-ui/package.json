@@ -1,6 +1,6 @@
 {
   "name": "dsh-timer-scheduler-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DSH plugin: an agent self-scheduler that wakes the agent later to check on background/remote work, plus a bottom-right reminder panel in the web UI.",
   "type": "module",
   "main": "lib/index.js",
@@ -14,7 +14,8 @@
     "cordis.patch.yml",
     "README.md",
     "README.zh.md",
-    "LICENSE"
+    "LICENSE",
+    "PROFILE_EVIDENCE.md"
   ],
   "keywords": [
     "deepseek",
@@ -32,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GMH13552/dsh-timer-scheduler.git"
+    "url": "https://github.com/GMH13552/dsh-timer-scheduler.git"
   },
   "dsh": {
     "bundle": {
@@ -46,6 +47,21 @@
       ],
       "platform": "web",
       "immediately": true
-    }
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.0-rc.8": "compatible",
+        "0.1.1-rc.1": "compatible",
+        "0.1.1-rc.2": "compatible"
+      },
+      "dsh": ">=0.1.0-rc.8 <0.2.0",
+      "node": ">=20"
+    },
+    "entryIds": [
+      "timer-scheduler-ui"
+    ]
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "dsh-mission-control",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A minimal, data-driven mission control for DeepSeek Harness: four lifecycle states, per-task verification plans, structural evidence gates, free replanning, and strict final audit.",
   "type": "module",
   "main": "lib/index.js",
@@ -16,7 +16,8 @@
     "preset",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "PROFILE_EVIDENCE.md"
   ],
   "scripts": {
     "test": "node --test test/core.test.mjs",
@@ -37,6 +38,25 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    }
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.0-rc.8": "compatible",
+        "0.1.1-rc.1": "compatible",
+        "0.1.1-rc.2": "compatible"
+      },
+      "dsh": ">=0.1.0-rc.8 <0.2.0",
+      "node": ">=20"
+    },
+    "entryIds": [
+      "dsh-mission-control"
+    ]
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GMH13552/dsh-longrun-suite.git"
   }
 }

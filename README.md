@@ -30,6 +30,32 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | 参考 LLM-as-a-Verifier 论文与上游 DSH 插件、经过更严格审查修正的 LLM 验证器：`verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` 自主定时唤醒 + 右下角倒计时面板 |
 
+## DSH Store 提交说明
+
+本仓库是三个独立插件的 monorepo，DSS STORE 上架时必须分别提交明确的子路径：
+
+| 插件 | 子路径 | Entry ID | 版本 |
+|---|---|---|---|
+| dsh-mission-control | `packages/dsh-mission-control` | `dsh-mission-control` | 0.2.0 |
+| llm-as-a-verifier | `packages/dsh-plugin-llm-verifier` | `llm-verifier` | 0.9.0 |
+| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.0 |
+
+每个子包 `package.json` 都声明了精确的 DSH 兼容矩阵：
+
+```json
+"dsh": {
+  "compatibility": {
+    "dshReleases": {
+      "0.1.0-rc.8": "compatible",
+      "0.1.1-rc.1": "compatible",
+      "0.1.1-rc.2": "compatible"
+    }
+  }
+}
+```
+
+详细说明见 [`STORE_SUBMISSION.md`](STORE_SUBMISSION.md)。
+
 ## 快速开始
 
 在 Long-Run Captain 会话里直接说：
