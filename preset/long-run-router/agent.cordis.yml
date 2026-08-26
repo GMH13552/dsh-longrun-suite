@@ -142,7 +142,7 @@
 # injected into the always-on system prompt. Child `deployment:persona`
 # role personas are preserved in the minimal section set.
 - id: router-bootstrap
-  name: ./router-bootstrap-v2.mjs
+  name: ./router-bootstrap-v3.mjs
   config:
     routerMode: standard
 
