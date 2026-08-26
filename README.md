@@ -140,7 +140,7 @@ mkdir -p "$HOME/.dsh/.agent-presets"
 cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
 ```
 
-> `dsh-plugin-llm-verifier` 默认使用 `provider: deepseek-official` + `model: deepseek-v4-pro`。如果你的模型路由不同，改 profile 的 `cordis.patch.yml` 中 `llm-verifier` 行的 `provider` / `model`，或者改本仓库 `packages/dsh-plugin-llm-verifier/cordis.patch.yml` 后重新安装。
+> `dsh-plugin-llm-verifier` 默认使用 `provider: deepseek-official` + `model: deepseek-v4-flash-vision-exp`。如果你的模型路由不同，改 profile 的 `cordis.patch.yml` 中 `llm-verifier` 行的 `provider` / `model`，或者改本仓库 `packages/dsh-plugin-llm-verifier/cordis.patch.yml` 后重新安装。
 
 ## 已知边界
 

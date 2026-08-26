@@ -7,7 +7,7 @@
       name: dsh-plugin-llm-verifier
       config:
         provider: deepseek-official
-        model: deepseek-v4-pro
+        model: deepseek-v4-flash-vision-exp
         reasoningEffort: high
         maxOutputTokens: 32768
         seed: 0

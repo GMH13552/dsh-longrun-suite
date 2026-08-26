@@ -31,7 +31,7 @@ Then **append** this entry to that profile's `cordis.patch.yml` (the file is a Y
       name: dsh-plugin-llm-verifier
       config:
         provider: deepseek-official
-        model: deepseek-v4-pro
+        model: deepseek-v4-flash-vision-exp
 ```
 
 `provider` and `model` name the LLM route that does the grading — replace them with a provider and model id your profile registers (the same names dsh's model picker shows). The plugin refuses to load without them.

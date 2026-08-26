@@ -133,7 +133,7 @@ mkdir -p "$HOME/.dsh/.agent-presets"
 cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
 ```
 
-> `dsh-plugin-llm-verifier` defaults to `provider: deepseek-official` and `model: deepseek-v4-pro`. Edit the `llm-verifier` row in your profile `cordis.patch.yml` if your routing differs, or edit `packages/dsh-plugin-llm-verifier/cordis.patch.yml` before installing.
+> `dsh-plugin-llm-verifier` defaults to `provider: deepseek-official` and `model: deepseek-v4-flash-vision-exp`. Edit the `llm-verifier` row in your profile `cordis.patch.yml` if your routing differs, or edit `packages/dsh-plugin-llm-verifier/cordis.patch.yml` before installing.
 
 ## Known limits
 
