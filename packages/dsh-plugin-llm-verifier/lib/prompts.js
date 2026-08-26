@@ -84,7 +84,7 @@ export function verifierSystemPrompt(granularity, tags) {
     'Before scoring, decide what evidence would be decisive for each criterion; do not judge from first impressions, length, or confidence.',
     scaleDescription(granularity),
     'Judge only what is actually present in the candidate. Unsupported claims count against it. Do not reward length, style, or confidence.',
-    'Keep your analysis brief — a few sentences at most.',
+    'Reason carefully through the evidence before scoring; keep the final analysis concise but do not skip decisive reasoning.',
     `Carefully analyze, then end your reply with exactly ${tagList}, where each N is one integer from 1 to ${granularity}. Output each tag exactly once and nothing after the final tag.`,
   ].join('\n')
 }
@@ -163,7 +163,7 @@ export function trackSystemPrompt(granularity) {
     'Before scoring, decide what observed evidence is decisive and what would change the score; do not score from surface impressions.',
     progressScaleDescription(granularity),
     'Effort, exploration, step count, and confident-sounding narration are NOT progress. Default to skepticism. Treat prose declarations ("done!", "all tests pass") as ZERO evidence; ground your score in the actual actions and the actual output you can see.',
-    'Keep your analysis brief — a few sentences at most.',
+    'Reason carefully through the evidence before scoring; keep the final analysis concise but do not skip decisive reasoning.',
     `Carefully analyze the partial trajectory, then end your reply with exactly <score>N</score>, where N is one integer from 1 to ${granularity}. Output the tag exactly once and nothing after it.`,
   ].join('\n')
 }

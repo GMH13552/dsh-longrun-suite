@@ -12,7 +12,8 @@ The headline feature is `verify_rollout`: ask for something once, and the plugin
 > - `verify_track` 使用参考实现的严格校准 prompt（只信观测输出，不信自我宣称，错误方向应平台化）；
 > - PPT pivot 选择对齐参考实现的 Bradley-Terry 平均偏好 `w_i/c_i`；
 > - 环赛奇数重复交换 A/B 槽位；
-> - rollout 默认使用参考 Terminal-Bench 的三标准分解。
+> - rollout 默认使用参考 Terminal-Bench 的三标准分解；
+- verifier prompt 保留论文/参考实现的 expert-reviewer + 评分尺度 + XML 标签结构，并加入 router-standard 的“先想清决定性证据再打分”纪律，不是把 verifier 压成无脑极简。
 
 ## Install
 
