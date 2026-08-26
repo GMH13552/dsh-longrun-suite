@@ -108,7 +108,16 @@ export function apply(ctx, config) {
       core = new Set(['str_replace_editor']) // RL shape: shell + editor
     } else {
       persona = personaFor(mode, modelId)
-      sections = applyPersona(assembled.sections, persona) // keep all other sections
+      const isSubagent = agent.session.header?.origin === 'subagent' || (agent.options?.subagentDepth ?? 0) > 0
+      // `deployment:persona` is ALSO the root Captain's persona section
+      // (dsh-persona uses the same name). On the root we must remove it so
+      // the router persona is the active first-turn identity; on a subagent
+      // it is the child's own role persona and must be preserved.
+      const personaSections = (assembled.sections || []).filter((section) => {
+        if (isSubagent) return true
+        return section.name !== 'deployment:persona'
+      })
+      sections = applyPersona(personaSections, persona) // keep all other sections
       core = new Set(legacyCore(mode))
     }
 
