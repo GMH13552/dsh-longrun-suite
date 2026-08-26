@@ -139,7 +139,7 @@
 # `deployment:persona` role personas, and restores the full Captain/role
 # sections + full catalog after the first durable tool/call.
 - id: router-bootstrap
-  name: ./router-bootstrap-v1.mjs
+  name: ./router-bootstrap-v2.mjs
   config:
     routerMode: spec
 
