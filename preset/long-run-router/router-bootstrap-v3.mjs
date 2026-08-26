@@ -102,7 +102,7 @@ export function apply(ctx, config) {
           { name: 'router-persona', text: persona, order: 0 },
         ]
       } else {
-        const missionNote = { name: 'mission-note', order: 1, text: 'Long missions: use mission_start/mission_* tools and delegate substantive work to role subagents.' }
+        const missionNote = { name: 'mission-note', order: 1, text: 'Long missions: use mission_start/mission_* tools and delegate substantive work to role subagents. After dispatching background subagents, do not sleep/poll; set a schedule_reminder and end the turn.' }
         sections = planSection
           ? [planSection, { name: 'router-persona', text: persona, order: 0 }, missionNote]
           : [{ name: 'router-persona', text: persona, order: 0 }, missionNote]

@@ -131,6 +131,12 @@ Rules:
   the new job ids and set a `schedule_reminder` as a fallback wake-up. If a
   completion notice never arrives, the reminder lets you re-check instead of
   stalling forever.
+- **NEVER busy-wait for subagents.** Do not call `sleep`, `sleep 60`, or
+  repeated `list_agents` / `ls profile-candidates` loops inside the turn to
+  wait for results. After dispatch, finish any truly independent bookkeeping
+  quickly, then **end the turn** and let the completion notice / scheduled
+  reminder wake you. Waiting inside the turn blocks the session and wastes
+  tokens; the timer exists precisely so the Captain can stop.
 - Wake-up ownership: the timer plugin now cold-resumes persisted sessions,
   so a worker's own `schedule_reminder` is a valid wake-up even after its
   Activation settles. Mission-level reminders are still useful for central
