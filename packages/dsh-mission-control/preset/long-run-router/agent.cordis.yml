@@ -132,16 +132,17 @@
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
     maxBytes: 65536
-# Long-run router: use the router `spec` path but FORCE the spec band
-# (mode 0) instead of weak self-routing — for long missions the measured
-# plan-collective `We` band is the stable one (let-me ~ 0). Spec keeps the
-# read/edit/glob/grep plan surface on the first request, preserves child
-# `deployment:persona` role personas, and restores the full Captain/role
-# sections + full catalog after the first durable tool/call.
+# Long-run router: use the ORIGINAL router-standard standard mode on the
+# first request — the RL minimal two-tool surface (shell + str_replace_editor,
+# tiny persona). This is the measured think-act mode that produced the
+# `We / Let's` plan-collective behavior in the working router-standard
+# session. Full Captain/role sections and full catalog return after the
+# first durable tool/call; child `deployment:persona` role personas are
+# preserved from the first turn.
 - id: router-bootstrap
   name: ./router-bootstrap-v2.mjs
   config:
-    routerMode: spec
+    routerMode: standard
 
 
 # The router bootstrap above is this preset's router-standard variant.

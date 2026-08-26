@@ -55,7 +55,7 @@ export function apply(ctx, config) {
   // spec（旧）: 深度思考优先——分类 persona（w7/REACT/SPEC）+ 保留全部 sections，
   //   模型首轮长思维链（101K 推理 0 行动是其特征，不是缺陷）。
   const routerMode = config.routerMode === 'spec' ? 'spec' : 'standard'
-  const RL_PERSONA = 'You are a helpful software engineer assistant.\nThink deeply first, then act in short verify loops. Do not begin with environment checks or exhaustive scans.'
+  const RL_PERSONA = 'You are a helpful software engineer assistant.'
 
   /** spec 路由模式的首轮工具面（旧行为；weak 也走 default 面）。 */
   function legacyCore(mode) {
