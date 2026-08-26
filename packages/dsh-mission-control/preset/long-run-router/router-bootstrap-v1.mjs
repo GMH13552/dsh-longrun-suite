@@ -55,7 +55,7 @@ export function apply(ctx, config) {
   // spec（旧）: 深度思考优先——分类 persona（w7/REACT/SPEC）+ 保留全部 sections，
   //   模型首轮长思维链（101K 推理 0 行动是其特征，不是缺陷）。
   const routerMode = config.routerMode === 'spec' ? 'spec' : 'standard'
-  const RL_PERSONA = 'You are a helpful software engineer assistant.'
+  const RL_PERSONA = 'You are a helpful software engineer assistant.\nThink deeply first, then act in short verify loops. Do not begin with environment checks or exhaustive scans.'
 
   /** spec 路由模式的首轮工具面（旧行为；weak 也走 default 面）。 */
   function legacyCore(mode) {
@@ -91,9 +91,20 @@ export function apply(ctx, config) {
     let persona
     if (routerMode === 'standard') {
       persona = RL_PERSONA
-      sections = planSection
-        ? [planSection, { name: 'router-persona', text: persona, order: 0 }]
-        : [{ name: 'router-persona', text: persona, order: 0 }]
+      const isSubagent = agent.session.header?.origin === 'subagent' || (agent.options?.subagentDepth ?? 0) > 0
+      if (isSubagent) {
+        // Keep the child's role persona visible even in the minimal first
+        // turn; only the root Captain persona is omitted.
+        const roleSections = (assembled.sections || []).filter((section) => section.name === 'deployment:persona')
+        sections = [
+          ...roleSections,
+          { name: 'router-persona', text: persona, order: 0 },
+        ]
+      } else {
+        sections = planSection
+          ? [planSection, { name: 'router-persona', text: persona, order: 0 }]
+          : [{ name: 'router-persona', text: persona, order: 0 }]
+      }
       core = new Set(['str_replace_editor']) // RL shape: shell + editor
     } else {
       persona = personaFor(mode, modelId)

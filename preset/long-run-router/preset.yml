@@ -1,8 +1,8 @@
 name: Long-Run Captain Router
 description: >
-  Long-Run Captain mission framework combined with the task-aware
-  reasoning-mode router (spec path). The first request keeps the full
-  Captain/role prompt sections and uses the measured task-aware persona
-  (flash-optimized deep-thinking guidance); after the first tool call the
-  full tool catalog is exposed. Applies to both the root session and
-  subagents composed from this preset, preserving role subagent personas.
+  Long-Run Captain mission framework combined with the router-standard
+  RL-shaped minimal first turn (tiny persona + shell/editor), the measured
+  Flash/Pro think-act feedback-loop boost, with a concise deep-thinking
+  instruction. After the first durable tool call the full Captain/role
+  sections and full tool catalog are restored. Applies to both the root
+  session and subagents, preserving role subagent personas.
