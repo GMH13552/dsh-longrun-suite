@@ -48,6 +48,7 @@ export function apply(ctx, config) {
   const overrides = new Map() // session id -> explicit mode (number 0..1)
   const agents = new Map() // session id -> Agent (live handle, in-process only)
   const firstUserText = new Map() // session id -> first REAL user message text (issue #3 fix)
+  const missionGuided = new Map() // session id -> true once when the mission-operating guide was sent
 
   // ── 路由模式（v0.2.0 命名，用户定义）───────────────────────────────────────
   // standard（默认，新）: RL 接口还原——首轮只有 RL 训练句 + shell/str_replace_editor，
@@ -158,6 +159,9 @@ export function apply(ctx, config) {
   const GUIDE_DEEP =
     '\nRouter: classify this task (build or fix) now, then adopt the matching style — build: direct production; fix: inspect-first. Think deeply about the architecture, edge cases, and integration points. Do not spend reasoning on the environment or tooling. Produce when your information is complete. End each reasoning block with a decision or an information need.'
 
+  const MISSION_GUIDE =
+    '\nLong-Run Captain: this is a long-running mission. Before doing substantive work, load the mission-protocol and task-profile skills, start a mission with mission_start, build task-profile.md/plan.md, and delegate substantive modeling/implementation/writing tasks to role subagents. Do not solve the whole problem yourself.'
+
   ctx.on('session/event', (session, event) => {
     if (event.type !== 'user/message') return
     const data = event.data ?? {}
@@ -174,12 +178,23 @@ export function apply(ctx, config) {
     if (!text.trim()) return
     const guide = isComplexTask(text) ? GUIDE_DEEP : GUIDE_WEAK
     try {
-      target.inbox.append('next-step', {
-        id: `router-guide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        role: 'user',
-        source: { kind: 'plugin', plugin: 'router-bootstrap' },
-        content: [{ type: 'text', text: guide }],
-      })
+      if (bandOf(mode) === 'weak') {
+        target.inbox.append('next-step', {
+          id: `router-guide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: 'user',
+          source: { kind: 'plugin', plugin: 'router-bootstrap' },
+          content: [{ type: 'text', text: guide }],
+        })
+      }
+      if (!missionGuided.has(session.id)) {
+        missionGuided.set(session.id, true)
+        target.inbox.append('next-step', {
+          id: `mission-guide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: 'user',
+          source: { kind: 'plugin', plugin: 'router-bootstrap' },
+          content: [{ type: 'text', text: MISSION_GUIDE }],
+        })
+      }
     } catch { /* duplicate/ordering races: skip */ }
   })
 
