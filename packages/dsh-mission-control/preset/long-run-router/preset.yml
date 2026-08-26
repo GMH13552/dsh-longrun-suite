@@ -1,9 +1,10 @@
 name: Long-Run Captain Router
 description: >
   Long-Run Captain mission framework combined with the original
-  router-standard standard (RL minimal) first-turn mode: a tiny persona and
-  shell + str_replace_editor surface, which produces the measured
-  think-act `We / Let's` plan-collective behavior. After the first durable
-  tool call the full Captain/role sections and full tool catalog are
-  restored. Applies to both the root session and subagents, preserving role
-  subagent personas.
+  router-standard standard (RL minimal) mode. The tiny persona and
+  shell + str_replace_editor surface persist for the whole session, which
+  is what produces and maintains the measured `We / Let's`
+  collective-planning behavior; after the first durable tool call only the
+  full tool catalog is added. Captain protocol is carried by the mission
+  skills/tools rather than an always-on heavy system prompt. Applies to
+  both the root session and subagents, preserving role subagent personas.

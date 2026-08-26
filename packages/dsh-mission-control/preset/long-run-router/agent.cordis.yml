@@ -66,9 +66,7 @@
       loops, repeated environment checks (echo/which/uname/date/version
       checks), exhaustive grep/glob scans, and repeating completed steps.
       Review what is already done in the session, then continue. Think deeply
-      first, then produce/act and verify. Use collective planning language in
-      your reasoning ("We need to...", "Let's first...") rather than solitary
-      exploration loops ("Let me just try...").
+      first, then produce/act and verify.
 
       Every substantive task must carry a `kind` and a role-subagent
       `assignee`. The mission tooling rejects `assignee: captain` for
@@ -134,13 +132,15 @@
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
     maxBytes: 65536
-# Long-run router: use the ORIGINAL router-standard standard mode on the
-# first request — the RL minimal two-tool surface (shell + str_replace_editor,
-# tiny persona). This is the measured think-act mode that produced the
-# `We / Let's` plan-collective behavior in the working router-standard
-# session. Full Captain/role sections and full catalog return after the
-# first durable tool/call; child `deployment:persona` role personas are
-# preserved from the first turn.
+# Long-run router: use the ORIGINAL router-standard standard mode and keep
+# its minimal first-turn sections for the WHOLE session (shell +
+# str_replace_editor tiny persona). After the first durable tool/call only
+# the full tool catalog is exposed; the minimal sections are deliberately
+# NOT replaced with the heavy Captain system, because that is what lets the
+# measured `We / Let's` collective-planning behavior persist. Captain
+# protocol is available through the mission skills/tools rather than being
+# injected into the always-on system prompt. Child `deployment:persona`
+# role personas are preserved in the minimal section set.
 - id: router-bootstrap
   name: ./router-bootstrap-v2.mjs
   config:

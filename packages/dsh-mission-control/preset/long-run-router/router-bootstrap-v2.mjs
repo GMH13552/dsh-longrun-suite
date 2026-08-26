@@ -56,7 +56,6 @@ export function apply(ctx, config) {
   //   模型首轮长思维链（101K 推理 0 行动是其特征，不是缺陷）。
   const routerMode = config.routerMode === 'spec' ? 'spec' : 'standard'
   const RL_PERSONA = 'You are a helpful software engineer assistant.'
-  const THINKING_SECTION = 'Use collective planning language (\"We need to...\", \"Let\'s first...\") instead of solitary exploration loops (\"Let me just try...\"). Think deeply first, then act.'
 
   /** spec 路由模式的首轮工具面（旧行为；weak 也走 default 面）。 */
   function legacyCore(mode) {
@@ -123,28 +122,12 @@ export function apply(ctx, config) {
     }
 
     if (session.events.some((event) => event.type === 'tool/call')) {
-      // long-run-router: after the first durable tool/call expose the full
-      // catalog AND restore the full preset sections. For subagents, remove
-      // the root Captain persona so the child's role persona
-      // (`deployment:persona`) remains authoritative; the root keeps the
-      // full Captain persona.
-      const isSubagent = agent.session.header?.origin === 'subagent' || (agent.options?.subagentDepth ?? 0) > 0
-      const thinkingSection = { name: 'router-thinking', order: 0, text: THINKING_SECTION }
-      if (isSubagent) {
-        return {
-          ...assembled,
-          contexts: [],
-          sections: [
-            ...(assembled.sections || []).filter((section) => section.name !== 'persona'),
-            thinkingSection,
-          ],
-        }
-      }
-      return {
-        ...assembled,
-        contexts: [],
-        sections: [...(assembled.sections || []), thinkingSection],
-      }
+      // Keep the exact first-turn sections for the whole session; only expose
+      // the full tool catalog. This is what makes router-standard keep the
+      // `We / Let's` collective-planning behavior even after tools appear.
+      // (Do NOT restore the full assembled sections here — that is what
+      // caused the later flip back to `Let me`.)
+      return { ...assembled, sections, contexts: [] }
     }
 
     const available = new Set(assembled.tools.map((tool) => tool.name))
