@@ -12,23 +12,45 @@ how to keep the mission honest and how to keep re-planning.
 ## 0. Intake
 
 1. Restate the user's goal precisely.
-2. Decide the deliverable form using `report-protocol` Step 0: paper,
-   code release, design doc, runbook, audit, briefing, or a mix. Do NOT
-   default to a paper unless the goal is a research claim or the user asked
-   for one. Record the form in the success criteria.
-3. Write 1+ verifiable `success_criteria` (not "improve the model" but
-   "benchmark A +3% at same seed and benchmark B no regression").
+2. Generate `task-profile.md` following the `task-profile` skill:
+   - several parallel researchers produce candidate profiles (with web);
+   - synthesize one authoritative profile;
+   - independent critic attacks it until it passes.
+   This profile fixes the deliverable form, audience, success standard,
+   standard approaches, constraints, and unknowns. Record the deliverable
+   form in the success criteria.
+3. Write 1+ verifiable `success_criteria` from the profile (not "improve the
+   model" but "benchmark A +3% at same seed and benchmark B no regression").
 4. Call `mission_start` with `goal`, `success_criteria`, optional `budget`.
-5. Do early web research before committing to a plan:
-   - search from 2–4 different angles;
-   - fetch primary sources (paper, docs, GitHub issue) for load-bearing facts;
-   - record source URLs in evidence or in the task description.
-6. Draft `plan.md` following the `plan-critique` skill: one through-line,
-   task DAG, risk/pre-mortem table, alternate directions, and the
-   deliverable contract (exact files + acceptance for the chosen form).
-7. Spawn an independent critic to attack the plan BEFORE dispatching work.
-   Fix the plan until the critic passes.
-8. Add initial tasks with `mission_add_tasks`.
+5. Draft `plan.md` following the `plan-critique` skill: one through-line,
+   task DAG (every substantive task assigned to a subagent role),
+   risk/pre-mortem table, alternate directions, and the deliverable
+   contract from the profile.
+6. Spawn an independent critic to attack the plan AGAINST the profile before
+   dispatching work. Fix until it passes.
+7. Add initial tasks with `mission_add_tasks`.
+
+## 0.5 Delegation availability gate (before any real work)
+
+Before starting substantive work, verify the team layer actually works:
+
+1. Try one small `subagent_reviewer` or `subagent_researcher` call on a
+   trivial task.
+2. Try one small `verify_compare` / `verify_select` call if the verifier is
+   relevant to the mission.
+3. Check `list_agents` and any obvious infrastructure errors.
+
+If delegation or verifier infrastructure is unavailable:
+
+- Do NOT silently do the work yourself and pretend it is the team.
+- Write `delegation-status.md` describing what failed and what was tested.
+- Produce at minimum a short `task-profile.md` (quality contract, not a
+  solution summary) so the planning artifact exists.
+- Stop and ask the user to fix/restart the session, OR continue only in
+  explicit degraded mode if the user confirms, with every deviation recorded.
+
+A Captain that solves everything itself because "subagents are down" is a
+protocol failure, not a fallback.
 
 ## 1. Adding tasks
 
@@ -43,11 +65,52 @@ Each task needs:
   - `reviewerInstruction` (what the independent reviewer must verify)
 - `dependencies` (optional)
 
+## 1.5 Delegation policy (default: delegate)
+
+The Captain is an orchestrator. For each task, decide the executor BEFORE
+claiming it:
+
+```text
+research / search-heavy work       -> subagent_researcher
+implementation / experiments       -> subagent_engineer
+verification / audit               -> subagent_reviewer
+final synthesis review             -> subagent_final_reviewer
+Captain may personally do only:    mission bookkeeping, short status checks,
+                                   small reads, plan/report synthesis
+```
+
+Rules:
+
+- If a task is expected to need more than 2–3 tool calls, spawn a subagent.
+  Do not spend a long thinking block doing the work yourself.
+- Set `assignee` on every task when calling `mission_add_tasks`, so the plan
+  itself says who executes it. The plugin then prevents claiming a planned
+  task under a different assignee.
+- Claim the task for the subagent role (`mission_claim(task_id, assignee="researcher")`),
+  then call the matching subagent tool with a self-contained prompt and the
+  acceptance criteria.
+- Do not “pre-do” the task in your own reasoning and then hand the subagent a
+  finished answer. That wastes both contexts.
+- If a subagent fails or returns garbage, reject/replan and dispatch again;
+  do not silently take over the work.
+- After dispatching background subagents, do NOT just end the turn and hope
+  for a completion notice. Before finishing the turn: check `job_list` for
+  the new job ids and set a `schedule_reminder` as a fallback wake-up. If a
+  completion notice never arrives, the reminder lets you re-check instead of
+  stalling forever.
+- Wake-up ownership: the timer plugin now cold-resumes persisted sessions,
+  so a worker's own `schedule_reminder` is a valid wake-up even after its
+  Activation settles. Mission-level reminders are still useful for central
+  coordination, but workers no longer need to hand them to the Captain.
+- Review and synthesis are Captain work, but only after workers have
+  submitted evidence.
+
 Example:
 
 ```json
 {
   "title": "Survey SOTA methods",
+  "assignee": "researcher",
   "acceptance": ["List 3+ candidate directions", "Each has a verifiable expected outcome"],
   "verificationPlan": {
     "kind": "literature",
@@ -103,6 +166,11 @@ When a task is rejected:
    alternative approaches).
 5. Call `mission_replan` with a note explaining the pivot.
 
+**Gap consumption rule (community practice, not optional):** every
+non-PASS reviewer output must be consumed by a follow-up attempt or an
+explicit documented decision. Silently ignoring a reviewer gap is a gate
+failure, not a step skipped.
+
 Do **not** ask the user for direction after the first rejection. Only ask when:
 
 - the user explicitly asked to be consulted;
@@ -156,9 +224,23 @@ following `purpose-bounded-search`:
 
 - declare a purpose card (what may be borrowed vs what may not);
 - search how similar tasks are done, evaluated, structured, or styled;
-- produce `lessons.md` before the final reviewer runs;
+- feed the findings into `task-profile.md` and the profile re-check round;
 - save tempting but off-purpose ideas to `maybe-later.md` instead of letting
   them redirect the mission.
+
+## 3.6 Explore–refine rhythm
+
+At start, when stuck, and before major review, run the expand–refine rhythm:
+
+```text
+广撒网 EXPAND（3–5 个不同角度的并行子代理）
+→ 精细化 REFINE（verifier / reviewer 排名，留下 1–2 个）
+→ 精确派发 winner
+→ 卡住就再次 EXPAND
+```
+
+The Captain coordinates the waves but never does the candidate work itself.
+Losers go to `maybe-later.md`, not into the plan. See `explore-refine-rhythm`.
 
 ## 4. Final completion
 
@@ -167,20 +249,26 @@ Completion is strict:
 1. Do **not** add “if we cannot solve it, write a partial report” as a success
    criterion at intake. Success criteria should describe the actual desired
    outcome. Use `termination_policy=success` by default.
-2. Produce the deliverable agreed at intake, following `report-protocol`:
+2. Run the `task-profile` Phase C re-check round: independent researchers
+   (with web) generate fresh candidate profiles; conflicts and complements
+   are merged, then the round repeats until stable.
+3. Produce the deliverable agreed at intake, following `report-protocol`:
    the right FORM (paper, code, runbook, audit, briefing, ...), one
    through-line, evidence levels, no irrelevant content, and only the export
    formats that were requested.
-3. Spawn `subagent_final_reviewer` to review the deliverable as a SYNTHESIS,
+4. Spawn `subagent_final_reviewer` to review the deliverable as a SYNTHESIS,
    not as a list of tasks: right form for the goal, through-line,
    claim-to-evidence mapping, usability, overclaim, readability.
-4. Call `mission_final_audit` with a `mapping` from every
+5. Write `mission-legacy.md` following the `lessons` skill: durable results,
+   verified reusable lessons, pitfalls likely to recur, and what remains
+   unsolved. This is the cross-mission handoff.
+6. Call `mission_final_audit` with a `mapping` from every
    `success_criteria` index to an accepted task and evidence paths.
-5. If any criterion is unmapped, or a mapped task is not accepted, or an
+7. If any criterion is unmapped, or a mapped task is not accepted, or an
    evidence path is missing, the audit fails and you must replan.
-6. Call `mission_check` (and `mission_check --final` if available) as a
+8. Call `mission_check` (and `mission_check --final` if available) as a
    structural sanity gate.
-7. Only then call `mission_complete`.
+9. Only then call `mission_complete`.
 
 If a real open problem is not solved but the user only wants a bounded report,
 set `termination_policy=budget-or-success` and a `budget.maxRounds`; the plugin
@@ -189,8 +277,9 @@ refuses completion and forces continued replanning.
 
 ## 5. Resource hygiene
 
-- Prefer one-shot subagents for fire-and-forget work; use continuable agents
-  only for members you will follow up with.
+- Role subagents are continuable so their completion notices and follow-ups
+  are reliable. Do not spawn more than needed; after a worker is done and no
+  more follow-ups are expected, stop pinging it and let it settle.
 - Do not call `list_agents`/`list_descendants` in loops. Mission state in
   `.mission/` is the source of truth.
 - After a mission is complete, archive/dismiss team members and remove

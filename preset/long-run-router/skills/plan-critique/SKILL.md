@@ -21,7 +21,10 @@ Write `plan.md` in the mission working directory. It must contain:
    acceptance for that form. Do not default to a paper.
 3. **Goal decomposition.** The sub-goals and how their union covers the
    original goal (coverage check).
-4. **Task DAG sketch.** Task ids, dependencies, assignee roles.
+4. **Task DAG sketch.** Task ids, dependencies, assignee roles. Default every
+   substantive task to a subagent role; "captain" is valid only for
+   bookkeeping / synthesis / review coordination. These assignees must be
+   passed to `mission_add_tasks` (the plugin enforces them at claim time).
 5. **Per-task acceptance criteria and verificationPlan** (at least draft).
 6. **Risk / pre-mortem table.** For each task:
    - the most likely way it fails;
@@ -49,6 +52,18 @@ Rules for the critic:
 - It must propose at least one failure mode the Captain did not list.
 - It must check coverage: do the tasks cover the goal, not just the easy
   parts?
+- It must check that substantive tasks are delegated to subagent roles and
+  not silently kept by the Captain.
+- It must check the Core Challenge from task-profile.md is preserved: no
+  lazy shortcut may replace the hard part with "try a few values", omit the
+  hardest module, or over-simplify constraints until the result no longer
+  answers the original task.
+- It must check the Forbidden Moves from task-profile.md are not present:
+  no silently dropped reviewer gap, no completion without fresh evidence +
+  covered scope + residual risk, no unverified High assumption driving tasks.
+- It must check that the plan is not confusing the three layers:
+  task-profile (quality contract) / domain-playbook (method families,
+  references) / plan+tasks (actual equations, pseudocode, evidence).
 - It must check that the deliverable form fits the goal and that the
   skeleton can actually be filled by the planned evidence.
 

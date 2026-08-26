@@ -30,6 +30,28 @@ how to keep the mission honest and how to keep re-planning.
    dispatching work. Fix until it passes.
 7. Add initial tasks with `mission_add_tasks`.
 
+## 0.5 Delegation availability gate (before any real work)
+
+Before starting substantive work, verify the team layer actually works:
+
+1. Try one small `subagent_reviewer` or `subagent_researcher` call on a
+   trivial task.
+2. Try one small `verify_compare` / `verify_select` call if the verifier is
+   relevant to the mission.
+3. Check `list_agents` and any obvious infrastructure errors.
+
+If delegation or verifier infrastructure is unavailable:
+
+- Do NOT silently do the work yourself and pretend it is the team.
+- Write `delegation-status.md` describing what failed and what was tested.
+- Produce at minimum a short `task-profile.md` (quality contract, not a
+  solution summary) so the planning artifact exists.
+- Stop and ask the user to fix/restart the session, OR continue only in
+  explicit degraded mode if the user confirms, with every deviation recorded.
+
+A Captain that solves everything itself because "subagents are down" is a
+protocol failure, not a fallback.
+
 ## 1. Adding tasks
 
 Each task needs:

@@ -52,31 +52,36 @@
          task-profile skill: several parallel researchers produce candidates,
          one authoritative profile is synthesized, and an independent critic
          attacks it. Update this living profile at every major seam.
-      2. Before any task starts, derive its acceptance criteria and
+      2. Before any real work, verify delegation works with a small probe.
+         If subagents/verifier are down, do NOT silently do the work
+         yourself. Write delegation-status.md, produce a minimal
+         task-profile.md, and stop or ask the user before continuing in
+         degraded mode.
+      3. Before any task starts, derive its acceptance criteria and
          verificationPlan from task-profile.md. The plan may be anything
          domain-appropriate (benchmark, proof audit, code review, literature
          check, custom command) — the framework does not hardcode domain steps.
-      3. Before dispatching work, write plan.md following the plan-critique
+      4. Before dispatching work, write plan.md following the plan-critique
          skill: one through-line, task DAG, pre-mortem risk table, alternate
          directions, and the deliverable skeleton. Spawn an independent
          critic to attack the plan against the profile and fix it before
          execution.
-      4. A task may only become accepted after an independent review: the
+      5. A task may only become accepted after an independent review: the
          reviewer must be a different agent/persona from the assignee. You
          never self-certify your own work.
-      5. Use mission_submit to attach real evidence paths/URLs, then
+      6. Use mission_submit to attach real evidence paths/URLs, then
          mission_review. If evidence is missing, mission_review will refuse.
-      6. On rejection, do not stop and do not ask the user for direction.
+      7. On rejection, do not stop and do not ask the user for direction.
          Replan autonomously: read the exact gap, decide whether to fix the
          same direction or pivot, add a new task with replaces=<rejected task
          id>, and continue. Only consult the user after at least 2 new
          directions have been tried, when the budget is exhausted, or for a
          genuinely user-owned decision.
-      7. Before submitting any non-trivial task, load the socratic-self-audit
+      8. Before submitting any non-trivial task, load the socratic-self-audit
          skill and include a self-check.md that answers: what would disprove
          this, what is the weakest assumption, how can this be derived a
          second way, and what would a reviewer reject.
-      8. In early exploration, when direction is uncertain, after repeated
+      9. In early exploration, when direction is uncertain, after repeated
          blocks, and before final review / cutoff, run purpose-bounded web
          research: declare a purpose card (what may be borrowed vs what may
          not), search multiple angles, fetch primary sources, record URLs and
@@ -84,7 +89,7 @@
          letting them redirect the mission. At the same seams, run
          capability-scout: search for skills, unlockable tools, and existing
          plugins/checklists that could help THIS task, and record the decision.
-      9. Final completion is strict. Run the task-profile Phase C re-check
+      10. Final completion is strict. Run the task-profile Phase C re-check
          round, follow report-protocol (right deliverable FORM, one
          through-line, evidence levels, requested export formats), write
          mission-legacy.md following the lessons skill, spawn
