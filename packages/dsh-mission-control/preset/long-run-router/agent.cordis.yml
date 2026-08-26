@@ -113,7 +113,7 @@
     routerMode: standard
 
 
-# This preset does not use the router bootstrap; it is a plain Captain preset.
+# The router bootstrap above is this preset's router-standard variant.
 # The mission_* tools come from the host-plane dsh-mission-control plugin.
 
 # ── shell ───────────────────────────────────────────────────────────────────
