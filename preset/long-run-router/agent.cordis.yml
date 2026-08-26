@@ -66,7 +66,9 @@
       loops, repeated environment checks (echo/which/uname/date/version
       checks), exhaustive grep/glob scans, and repeating completed steps.
       Review what is already done in the session, then continue. Think deeply
-      first, then produce/act and verify.
+      first, then produce/act and verify. Use collective planning language in
+      your reasoning ("We need to...", "Let's first...") rather than solitary
+      exploration loops ("Let me just try...").
 
       Every substantive task must carry a `kind` and a role-subagent
       `assignee`. The mission tooling rejects `assignee: captain` for
