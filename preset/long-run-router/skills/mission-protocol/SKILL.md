@@ -16,9 +16,11 @@ how to keep the mission honest and how to keep re-planning.
    - several parallel researchers produce candidate profiles (with web);
    - synthesize one authoritative profile;
    - independent critic attacks it until it passes.
-   This profile fixes the deliverable form, audience, success standard,
-   standard approaches, constraints, and unknowns. Record the deliverable
-   form in the success criteria.
+   This profile fixes the **Deliverable Contract**: form, audience,
+   voice/tone, style exemplars, forbidden voice, export formats, success
+   standard, standard approaches, constraints, and unknowns. Record the
+   deliverable form (and audience/style, when material) in the success
+   criteria.
 3. Write 1+ verifiable `success_criteria` from the profile (not "improve the
    model" but "benchmark A +3% at same seed and benchmark B no regression").
 4. Call `mission_start` with `goal`, `success_criteria`, optional `budget`.
@@ -52,14 +54,45 @@ If delegation or verifier infrastructure is unavailable:
 A Captain that solves everything itself because "subagents are down" is a
 protocol failure, not a fallback.
 
+## 0.6 Hard line: the Captain is not a worker
+
+The Captain may personally do:
+
+- mission bookkeeping and status checks;
+- reading user-provided files / problem statements;
+- writing `profile-seed` / plan skeletons and dispatch prompts;
+- coordinating explore-refine waves;
+- synthesizing the final report from **subagent-produced** evidence.
+
+The Captain must NOT personally do:
+
+- derive the core model, theorem, formula, method, or algorithm;
+- implement code, run experiments, or choose final numerical results;
+- write the substantive body of a paper/report/spec/runbook;
+- decide the answer before a researcher/engineer has produced evidence;
+- "pre-do" a task in reasoning and then hand a subagent a finished result.
+
+There is **no pragmatic exception**. "The user only wants a result",
+"this task is simple", "subagents take too long", or "I want to save tokens"
+are never reasons for the Captain to do substantive work. If budget is a
+concern, set `budget.maxRounds` / `termination_policy`; if delegation is
+down, stop and ask (Section 0.5). Doing the work yourself because it is
+faster is a protocol failure.
+
+Every substantive task must be added with a `kind` and a role subagent
+assignee. The plugin now rejects `assignee: captain` for
+`research` / `engineering` / `review` / `deliverable-style`.
+
 ## 1. Adding tasks
 
 Each task needs:
 
 - `title`
+- `kind`: `research` | `engineering` | `review` | `deliverable-style` | `synthesis` | `bookkeeping` | `coordination`
+- `assignee`: the role subagent who will do it (`researcher` / `engineer` / `reviewer` / `final_reviewer`), except for captain-allowed kinds
 - `acceptance`: concrete, checkable criteria
 - `verificationPlan`: domain-specific plan. Suggested fields:
-  - `kind` (benchmark / proof / code-review / literature / custom)
+  - `verificationKind` (benchmark / proof / code-review / literature / custom)
   - `requiredEvidence` (file basenames or paths that must exist)
   - `checkCommand` (optional command that must pass)
   - `reviewerInstruction` (what the independent reviewer must verify)
@@ -103,17 +136,56 @@ Rules:
   Activation settles. Mission-level reminders are still useful for central
   coordination, but workers no longer need to hand them to the Captain.
 - Review and synthesis are Captain work, but only after workers have
-  submitted evidence.
+  submitted evidence and after the deliverable-style review passed.
+
+### Mission Brief (pass global context to every subagent)
+
+Before dispatching any subagent, create/update `mission-brief.md` and paste
+it into the subagent prompt. It is the shared context that prevents an
+engineer from writing "I think..." or a researcher from ignoring the
+deliverable's audience.
+
+```text
+Mission Brief
+=============
+Goal:
+Success criteria:
+Deliverable Contract:
+  form:
+  audience:
+  voice/tone:
+  style exemplars (borrow only structure/style, not content):
+  forbidden voice:
+  export formats:
+task-profile path:
+Accepted evidence so far:
+Relevant lessons (from mission-legacy or intra-mission):
+Current task:
+  kind:
+  assignee:
+  acceptance:
+  verificationPlan:
+```
+
+Rules:
+
+- Every substantive subagent prompt must include the Mission Brief, not just
+  the bare task text.
+- The subagent must know the **deliverable contract** even for research or
+  engineering tasks, because it affects what evidence/format/style is needed.
+- Do not omit style/audience because "this is just a research task"; research
+  tasks feed the deliverable too.
 
 Example:
 
 ```json
 {
   "title": "Survey SOTA methods",
+  "kind": "research",
   "assignee": "researcher",
   "acceptance": ["List 3+ candidate directions", "Each has a verifiable expected outcome"],
   "verificationPlan": {
-    "kind": "literature",
+    "verificationKind": "literature",
     "requiredEvidence": ["survey.md", "sources.json"],
     "reviewerInstruction": "Verify each source URL is real and current."
   }
@@ -253,22 +325,27 @@ Completion is strict:
    (with web) generate fresh candidate profiles; conflicts and complements
    are merged, then the round repeats until stable.
 3. Produce the deliverable agreed at intake, following `report-protocol`:
-   the right FORM (paper, code, runbook, audit, briefing, ...), one
-   through-line, evidence levels, no irrelevant content, and only the export
-   formats that were requested.
-4. Spawn `subagent_final_reviewer` to review the deliverable as a SYNTHESIS,
+   the right FORM and Deliverable Contract (paper, code, runbook, audit,
+   briefing, ...), one through-line, evidence levels, no irrelevant content,
+   and only the export formats that were requested.
+4. Run the **deliverable-style review** (`kind: deliverable-style`,
+   `assignee: reviewer`) as an independent gate: form, audience, voice/tone,
+   style exemplars, forbidden voice, rendering. It must pass before final
+   review.
+5. Spawn `subagent_final_reviewer` to review the deliverable as a SYNTHESIS,
    not as a list of tasks: right form for the goal, through-line,
-   claim-to-evidence mapping, usability, overclaim, readability.
-5. Write `mission-legacy.md` following the `lessons` skill: durable results,
+   claim-to-evidence mapping, usability, overclaim, readability, audience,
+   voice/tone.
+6. Write `mission-legacy.md` following the `lessons` skill: durable results,
    verified reusable lessons, pitfalls likely to recur, and what remains
    unsolved. This is the cross-mission handoff.
-6. Call `mission_final_audit` with a `mapping` from every
+7. Call `mission_final_audit` with a `mapping` from every
    `success_criteria` index to an accepted task and evidence paths.
-7. If any criterion is unmapped, or a mapped task is not accepted, or an
+8. If any criterion is unmapped, or a mapped task is not accepted, or an
    evidence path is missing, the audit fails and you must replan.
-8. Call `mission_check` (and `mission_check --final` if available) as a
+9. Call `mission_check` (and `mission_check --final` if available) as a
    structural sanity gate.
-9. Only then call `mission_complete`.
+10. Only then call `mission_complete`.
 
 If a real open problem is not solved but the user only wants a bounded report,
 set `termination_policy=budget-or-success` and a `budget.maxRounds`; the plugin

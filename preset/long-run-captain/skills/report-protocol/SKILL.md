@@ -30,16 +30,40 @@ criterion; do not stop and ask unless the user's own words conflict.
 
 ## Step 1 — Define the form contract in the plan
 
-During planning, record in `plan.md`:
+During planning, record in `plan.md` (and in `task-profile.md` / a
+referenced `deliverable-contract.md`):
 
 ```text
 deliverable: code-release | report | paper | design-doc | runbook | audit | summary | other
 files: <exact paths>
+audience: <who reads/uses this>
+voice/tone: <objective contest paper, tutorial, decision memo, technical doc, ...>
+style exemplars: <which prior work/template to follow; what to borrow>
+forbidden voice: <what must NOT appear, e.g. conversational 你/我/我们 in a formal paper>
+export formats: <PDF + Word, Markdown, repo, xlsx, ...>
 acceptance: <what "usable" means for this deliverable>
+style review: <which review task/persona checks the style gate>
 ```
 
 This contract becomes part of the mission's success criteria, so the final
-audit checks the actual form, not an assumed one.
+audit checks the actual form and voice, not an assumed one.
+
+## Step 1.5 — Plan a dedicated style/audience review
+
+A text deliverable always needs an explicit `deliverable-style` task in the
+DAG (`kind: deliverable-style`, `assignee: reviewer`). It must verify:
+
+1. Is the form exactly what the contract says?
+2. Does the voice/tone match the audience (formal contest paper, user-facing
+   docs, internal memo, etc.)?
+3. Are the style exemplars honored without importing their content?
+4. Is the forbidden-voice list clean (no conversational “你/我/我们” in a
+   formal paper, no unmarked opinion, no marketing tone)?
+5. Are export formats produced and rendering correctly (fonts, tables,
+   figures, links)?
+
+This review runs **before** `subagent_final_reviewer`; it is not folded into
+the technical pass.
 
 ## Step 2 — Common quality gates (form-independent)
 
@@ -86,19 +110,26 @@ context → decision → steps → rollback/risks → verification checklist
 
 These are starting points. The chosen form can mix several of them.
 
-## Step 4 — Synthesis review
+## Step 4 — Style/audience review and synthesis review
 
-Before `mission_complete`, spawn `subagent_final_reviewer` with the deliverable
-contract and the actual artifact. It must answer:
+Before `mission_complete`:
 
-1. Is this the right form for the goal, or did the Captain default to a paper
-   out of habit?
-2. Does the deliverable have one through-line and map every claim to accepted
-   evidence?
-3. Is it complete and usable according to the contract?
-4. Is there filler, overclaim, or broken rendering/links/tests?
-5. Does the conclusion/README overclaim?
-6. Is the completion claim honest: fresh evidence + covered scope +
-   residual risk? If any of the three is missing, reject as overclaim.
+1. Run the **deliverable-style review** from Step 1.5. It must pass.
+2. Spawn `subagent_final_reviewer` with the deliverable contract and the actual
+   artifact. It must answer:
 
-Only a pass allows `mission_final_audit` to proceed.
+   1. Is this the right form for the goal, or did the Captain default to a
+      paper out of habit?
+   2. Does the deliverable have one through-line and map every claim to
+      accepted evidence?
+   3. Is it complete and usable according to the contract?
+   4. Is there filler, overclaim, or broken rendering/links/tests?
+   5. Does the conclusion/README overclaim?
+   6. Does the voice/tone/audience match the Deliverable Contract, or does it
+      read like a model talking to the user rather than the intended audience
+      (e.g. a contest submission)?
+   7. Is the completion claim honest: fresh evidence + covered scope +
+      residual risk? If any of the three is missing, reject as overclaim.
+
+Only a pass on both the style review and the synthesis review allows
+`mission_final_audit` to proceed.

@@ -16,6 +16,16 @@
 
 export const TASK_STATUSES = ['open', 'active', 'needs_review', 'accepted', 'rejected']
 
+/** Generic task kinds. The framework does not interpret these; it only uses
+ * them to keep substantive work from being silently claimed by the Captain.
+ * `synthesis`, `bookkeeping`, and `coordination` are Captain-allowed;
+ * every other kind must be assigned to a role subagent. */
+export const TASK_KINDS = ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination']
+
+export function isCaptainAllowedKind(kind) {
+  return kind === 'synthesis' || kind === 'bookkeeping' || kind === 'coordination'
+}
+
 export function createMission({ goal, successCriteria = [], success_criteria = null, title, budget = {}, missionId, terminationPolicy = 'success' }) {
   if (!Array.isArray(successCriteria) || successCriteria.length === 0) {
     successCriteria = Array.isArray(success_criteria) ? success_criteria : []
@@ -100,10 +110,17 @@ export function addTask(mission, task) {
       throw new Error(`task "${task.title}" assignee must be a non-empty string when provided`)
     }
   }
+  if (typeof task.kind !== 'string' || !TASK_KINDS.includes(task.kind)) {
+    throw new Error(`task "${task.title}" requires kind, one of: ${TASK_KINDS.join(', ')}`)
+  }
+  if (task.assignee && task.assignee === 'captain' && !isCaptainAllowedKind(task.kind)) {
+    throw new Error(`task "${task.title}" kind "${task.kind}" cannot be assigned to captain; use a role subagent`)
+  }
   mission.tasks[id] = {
     id,
     title: String(task.title).trim(),
     status: 'open',
+    kind: task.kind || null,
     assignee: task.assignee ? String(task.assignee).trim() : null,
     dependencies: Array.isArray(task.dependencies) ? task.dependencies.map(String) : [],
     acceptance: task.acceptance.map(String),
@@ -154,6 +171,15 @@ export function updateTask(mission, taskId, patch) {
     }
     task.verificationPlan = patch.verificationPlan
   }
+  if (patch.kind !== undefined) {
+    if (typeof patch.kind !== 'string' || !TASK_KINDS.includes(patch.kind)) {
+      throw new Error(`kind must be one of: ${TASK_KINDS.join(', ')}`)
+    }
+    if (task.assignee === 'captain' && !isCaptainAllowedKind(patch.kind)) {
+      throw new Error(`cannot change task ${taskId} to kind "${patch.kind}" while assigned to captain`)
+    }
+    task.kind = patch.kind
+  }
   task.updatedAt = Date.now()
   mission.updatedAt = Date.now()
   journal(mission, 'task-updated', taskId)
@@ -172,8 +198,12 @@ export function claimTask(mission, taskId, assignee) {
   if (task.assignee && assignee && assignee !== task.assignee) {
     throw new Error(`task ${taskId} was planned for assignee "${task.assignee}", cannot claim as "${assignee}"`)
   }
+  const finalAssignee = task.assignee || assignee || 'captain'
+  if (task.kind && !isCaptainAllowedKind(task.kind) && finalAssignee === 'captain') {
+    throw new Error(`task ${taskId} kind "${task.kind}" cannot be claimed by captain; use a role subagent`)
+  }
   task.status = 'active'
-  task.assignee = task.assignee || assignee || 'captain'
+  task.assignee = finalAssignee
   task.updatedAt = Date.now()
   mission.updatedAt = Date.now()
   journal(mission, 'task-claimed', `${taskId} -> ${task.assignee}`)

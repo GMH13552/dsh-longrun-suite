@@ -8,6 +8,10 @@ It is **not** a workflow engine with hardcoded domain steps. It provides:
 - a tiny task lifecycle: `open → active → needs_review → accepted / rejected`
 - per-task `verificationPlan` data (benchmark, proof, code-review, literature, custom — anything)
 - independent review enforcement: self-review is rejected
+- role-kind enforcement: tasks must carry a generic `kind` (`research`,
+  `engineering`, `review`, `deliverable-style`, `synthesis`,
+  `bookkeeping`, `coordination`); the controller rejects `captain` for
+  substantive kinds at add/claim time
 - structural evidence gates via `mission_check`
 - free replanning: tasks can be added, removed, rewired, or new goals appended at any time
 - **autonomous continuation**: a rejected task must be superseded by a follow-up task (`replaces=...`) before completion; this prevents “fail once then stop”
@@ -65,7 +69,8 @@ become available to the Captain.
 In a session:
 
 1. `mission_start` with a goal and success criteria.
-2. Do early web research, then `mission_add_tasks` with per-task `verificationPlan`.
+2. Write the Deliverable Contract, do early web research, then
+   `mission_add_tasks` with per-task `kind`, `assignee`, and `verificationPlan`.
 3. `mission_claim` → work → `mission_submit` with evidence → spawn an independent reviewer → `mission_review`.
 4. On rejection: read the gap, `mission_replan`, add a replacement task with `replaces=<rejected id>`, use `mission_update_task` to rewire dependents, and continue. Do not stop after one failure.
 5. Before submitting non-trivial work, load `socratic-self-audit` and include `self-check.md`.

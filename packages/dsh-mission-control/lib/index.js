@@ -215,13 +215,14 @@ export function apply(ctx) {
               acceptance: { type: 'array', items: { type: 'string' }, description: 'Acceptance criteria that must be satisfied before review.' },
               dependencies: { type: 'array', items: { type: 'string' }, description: 'Task ids that must be accepted first.' },
               assignee: { type: 'string', description: 'Planned executor role (e.g. researcher / engineer / reviewer / final_reviewer). Default substantive work to a subagent; captain only for bookkeeping/synthesis.' },
+              kind: { type: 'string', enum: ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination'], description: 'Generic task kind. The plugin rejects captain assignee for research/engineering/review/deliverable-style.' },
               replaces: { type: 'string', description: 'Optional id of a rejected task this new task supersedes. The rejected task will be marked superseded and can no longer block completion.' },
               verificationPlan: {
                 type: 'object',
                 description: 'Domain-specific verification plan. Suggested fields: kind, requiredEvidence[], checkCommand, reviewerInstruction. The framework treats this as opaque data.',
               },
             },
-            required: ['title', 'acceptance'],
+            required: ['title', 'acceptance', 'kind'],
             additionalProperties: true,
           },
         },
@@ -252,6 +253,7 @@ export function apply(ctx) {
         dependencies: { type: 'array', items: { type: 'string' }, description: 'Optional new dependency task ids.' },
         acceptance: { type: 'array', items: { type: 'string' }, description: 'Optional new acceptance criteria.' },
         verification_plan: { type: 'object', description: 'Optional new verificationPlan.' },
+        kind: { type: 'string', enum: ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination'], description: 'Optional new task kind.' },
         mission_id: { type: 'string', description: 'Optional mission id. Defaults to the latest mission.' },
       },
       required: ['task_id'],
@@ -266,6 +268,7 @@ export function apply(ctx) {
         dependencies: args.dependencies,
         acceptance: args.acceptance,
         verificationPlan: args.verification_plan,
+        kind: args.kind,
       })
       saveMission(cwd, mission)
       return `Updated ${args.task_id}\n\n${statusText(mission)}`

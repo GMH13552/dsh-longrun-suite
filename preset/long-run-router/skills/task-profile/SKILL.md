@@ -12,12 +12,44 @@ description: The core living artifact of a mission. Generate several candidate p
 - the standard approaches, constraints, and known failure modes;
 - what is still unknown.
 
-It is not a fixed template. Its content is free-form; only three
+It is not a fixed template. Its content is free-form; only four
 invariants are enforced:
 
 1. it exists;
 2. it answers deliverable / audience / success standard;
-3. every subagent and reviewer reads it before working.
+3. it contains a **Deliverable Contract**: form, audience, voice/tone,
+   style exemplars, forbidden voice, export formats;
+4. every subagent and reviewer reads it (and the contract) before working.
+
+## Deliverable Contract
+
+Every task-profile must state what the mission is producing and for whom.
+This is the contract that gets pasted into every subagent prompt and checked
+by the plan critic, the style reviewer, and the final reviewer. It is
+domain-neutral — the fields apply to papers, code releases, runbooks,
+briefings, audits, and operations work alike.
+
+```text
+form:                paper | code-release | design-doc | runbook | audit | briefing | summary | other
+files:               exact paths / formats the user will receive
+audience:            who reads/uses this (contest judges, developers, operators, executives, the user)
+voice/tone:          objective contest-paper; tutorial; decision memo; technical doc; personal briefing
+style exemplars:     which prior works/templates to follow, and which parts to borrow (structure, voice, formatting)
+forbidden voice:     what must NOT appear (e.g. "你/我/我们" conversational phrasing in a formal paper,
+                     unlabeled opinion, marketing tone, first-person as the model speaking)
+export formats:      PDF + Word, Markdown, repository, xlsx, etc.
+style review task:   which review task/persona accepts the style gate
+```
+
+This contract answers three questions the Captain must never guess at the
+end:
+
+- What is the deliverable?
+- Who is it for and what does “good” look like to them?
+- What voice/style is required, and what is explicitly forbidden?
+
+If the goal is not a paper, the contract says so and the plan must produce
+the smaller/right artifact.
 
 ## Three-layer split (do not overload the profile)
 
@@ -115,12 +147,17 @@ Do not write one profile from the Captain's own prior. Instead:
    different angle:
    - audience / evaluator / success standard;
    - standard workflow and methods for this task type;
-   - exemplars and their structure/style;
+   - exemplars and their structure/style (what does a good one look like,
+     and what voice/format conventions apply);
+   - deliverable contract: form, target reader, tone, forbidden voice,
+     export formats;
    - constraints, pitfalls, failure modes;
-   - tools, skills, and verification methods.
+   - tools, skills, and verification methods;
+   - how this deliverable will be judged/reviewed (evaluation criteria).
    At least one candidate must focus on: **what is the Core Challenge, what
    would a lazy version look like, and what evidence proves the core is
-   done**. Each candidate may use purpose-bounded web search.
+   done**. At least one candidate must focus on the **Deliverable Contract**.
+   Each candidate may use purpose-bounded web search.
 3. Rank candidates. By default spawn `subagent_reviewer` to rank them — it is
    cheaper and more reliable for qualitative documents. Use `verify_select` /
    `verify_compare` only when there are at most 2–3 candidates and the
@@ -170,7 +207,10 @@ Before `mission_final_audit`, run at least one profile round:
    independently produce a fresh `task-profile-candidate.md` for the SAME
    original goal, using everything now known. Each must also re-answer:
    "Is the current Core Challenge still the right one? Is anything currently
-   treated as a reasonable simplification actually a lazy shortcut?"
+   treated as a reasonable simplification actually a lazy shortcut?
+   Is the Deliverable Contract (form / audience / voice / style exemplars /
+   forbidden voice) still right, or did the mission drift into a different
+   artifact?"
 2. Compare each candidate against the current `task-profile.md`. Classify
    every difference:
 

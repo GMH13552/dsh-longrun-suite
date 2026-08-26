@@ -16,15 +16,20 @@ Write `plan.md` in the mission working directory. It must contain:
 
 1. **One-sentence through-line.** What single contribution/outcome this
    mission is trying to produce.
-2. **Deliverable form.** Use `report-protocol` Step 0: paper, code release,
-   design doc, runbook, audit, briefing, or a mix. Record the exact files and
-   acceptance for that form. Do not default to a paper.
+2. **Deliverable contract.** Use `report-protocol` Steps 0–1: form, files,
+   audience, voice/tone, style exemplars, forbidden voice, export formats,
+   acceptance, and the `deliverable-style` review task. Do not default to a
+   paper.
 3. **Goal decomposition.** The sub-goals and how their union covers the
    original goal (coverage check).
-4. **Task DAG sketch.** Task ids, dependencies, assignee roles. Default every
-   substantive task to a subagent role; "captain" is valid only for
-   bookkeeping / synthesis / review coordination. These assignees must be
-   passed to `mission_add_tasks` (the plugin enforces them at claim time).
+4. **Task DAG sketch.** Task ids, dependencies, assignee roles, and `kind`
+   (`research` / `engineering` / `review` / `deliverable-style` /
+   `synthesis` / `bookkeeping`). Default every substantive task to a
+   subagent role; "captain" is valid only for
+   bookkeeping / synthesis / coordination. These assignees and kinds must be
+   passed to `mission_add_tasks` (the plugin rejects captain for substantive
+   kinds at add/claim time). A text deliverable must include a
+   `deliverable-style` review task.
 5. **Per-task acceptance criteria and verificationPlan** (at least draft).
 6. **Risk / pre-mortem table.** For each task:
    - the most likely way it fails;
@@ -53,7 +58,12 @@ Rules for the critic:
 - It must check coverage: do the tasks cover the goal, not just the easy
   parts?
 - It must check that substantive tasks are delegated to subagent roles and
-  not silently kept by the Captain.
+  not silently kept by the Captain (check `kind` + assignee; the plugin now
+  rejects captain for research/engineering/review/deliverable-style).
+- It must check that the Deliverable Contract exists: form, audience,
+  voice/tone, style exemplars, forbidden voice, export formats.
+- It must check that a `deliverable-style` review task is in the DAG for any
+  text/report deliverable.
 - It must check the Core Challenge from task-profile.md is preserved: no
   lazy shortcut may replace the hard part with "try a few values", omit the
   hardest module, or over-simplify constraints until the result no longer

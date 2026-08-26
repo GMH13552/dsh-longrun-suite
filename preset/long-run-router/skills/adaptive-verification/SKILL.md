@@ -25,7 +25,7 @@ Then choose the verification shape.
 
 ```json
 {
-  "kind": "literature",
+  "verificationKind": "literature",
   "requiredEvidence": ["survey.md", "sources.json"],
   "reviewerInstruction": "Verify every source URL exists, is current, and supports the claim."
 }
@@ -35,7 +35,7 @@ Then choose the verification shape.
 
 ```json
 {
-  "kind": "benchmark-experiment",
+  "verificationKind": "benchmark-experiment",
   "requiredEvidence": ["config.json", "metrics.json", "baseline.json", "run.log"],
   "checkCommand": "python verify_experiment.py --task t-04",
   "reviewerInstruction": "Re-run or inspect the run log; check seed parity; compare against baseline."
@@ -46,7 +46,7 @@ Then choose the verification shape.
 
 ```json
 {
-  "kind": "math-proof",
+  "verificationKind": "math-proof",
   "requiredEvidence": ["statement.md", "derivation.md", "counterexample-search.log"],
   "reviewerInstruction": "Independently re-derive; only a concrete counterexample may reject a route."
 }
@@ -56,7 +56,7 @@ Then choose the verification shape.
 
 ```json
 {
-  "kind": "code-review",
+  "verificationKind": "code-review",
   "requiredEvidence": ["diff.patch", "tests.log", "coverage.json"],
   "checkCommand": "npm test && npm run lint",
   "reviewerInstruction": "Run the tests, inspect edge cases, verify the diff matches the acceptance criteria."
@@ -81,7 +81,7 @@ task or a research-surge task:
 
 ```json
 {
-  "kind": "research-surge",
+  "verificationKind": "research-surge",
   "requiredEvidence": ["direction-report.md", "sources.json"],
   "reviewerInstruction": "Independently verify source validity and freshness; mark each proposed direction as plausible or not."
 }

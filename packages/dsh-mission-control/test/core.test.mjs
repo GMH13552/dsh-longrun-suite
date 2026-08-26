@@ -22,6 +22,7 @@ function makeMission() {
     {
       id: 't-01',
       title: 'Baseline reproduction',
+      kind: 'engineering',
       acceptance: ['baseline.json exists'],
       verificationPlan: {
         kind: 'benchmark',
@@ -31,6 +32,7 @@ function makeMission() {
     {
       id: 't-02',
       title: 'New method experiment',
+      kind: 'engineering',
       acceptance: ['metrics.json exists'],
       dependencies: ['t-01'],
       verificationPlan: {
@@ -89,7 +91,7 @@ test('reject requires a gap and replan can add tasks', () => {
 
   replan(m, 'add seed reproduction task')
   addTasks(m, [
-    { id: 't-03', title: 'Seed fix', acceptance: ['seed recorded'], verificationPlan: {} },
+    { id: 't-03', title: 'Seed fix', kind: 'engineering', acceptance: ['seed recorded'], verificationPlan: {} },
   ])
   assert.ok(m.tasks['t-03'])
 })
@@ -111,7 +113,7 @@ test('rejected task without follow-up blocks completion', () => {
 
   // Add an extra direction that gets rejected and never followed up.
   addTasks(m, [
-    { id: 't-03', title: 'Dead end', acceptance: ['x'], verificationPlan: {} },
+    { id: 't-03', title: 'Dead end', kind: 'engineering', acceptance: ['x'], verificationPlan: {} },
   ])
   claimTask(m, 't-03', 'engineer')
   submitTask(m, 't-03', ['dead.log'])
@@ -129,7 +131,7 @@ test('rejected task with replaces is allowed to complete', () => {
 
   // Add a follow-up task that supersedes the rejected one, then finish it.
   addTasks(m, [
-    { id: 't-03', title: 'Seed reproduction v2', acceptance: ['seed recorded'], verificationPlan: {}, replaces: 't-01' },
+    { id: 't-03', title: 'Seed reproduction v2', kind: 'engineering', acceptance: ['seed recorded'], verificationPlan: {}, replaces: 't-01' },
   ])
   assert.equal(m.tasks['t-01'].supersededBy, 't-03')
   claimTask(m, 't-03', 'engineer')
@@ -166,7 +168,7 @@ test('checkMission rejects accepted task missing required evidence', () => {
 test('planned assignee is enforced at claim time', () => {
   const m = createMission({ goal: 'g', successCriteria: ['c'] })
   addTasks(m, [
-    { id: 't-01', title: 'Do work', assignee: 'researcher', acceptance: ['a'], verificationPlan: {} },
+    { id: 't-01', title: 'Do work', kind: 'research', assignee: 'researcher', acceptance: ['a'], verificationPlan: {} },
   ])
   assert.equal(m.tasks['t-01'].assignee, 'researcher')
   assert.throws(() => claimTask(m, 't-01', 'captain'), /planned for assignee/)
@@ -184,4 +186,38 @@ test('createMission tolerates snake_case success_criteria as defensive fallback'
   assert.deepEqual(m.successCriteria, ['criterion one'])
   assert.equal(m.id, 'regression-mission')
   assert.equal(m.terminationPolicy, 'budget-or-success')
+})
+
+test('captain cannot be assigned substantive task kinds', () => {
+  const m = createMission({ goal: 'g', successCriteria: ['c'] })
+  assert.throws(
+    () => addTasks(m, [
+      { id: 't-core', title: 'Derive the model', kind: 'research', assignee: 'captain', acceptance: ['model.md'], verificationPlan: {} },
+    ]),
+    /cannot be assigned to captain/,
+  )
+
+  addTasks(m, [
+    { id: 't-core2', title: 'Derive the model v2', kind: 'research', acceptance: ['model.md'], verificationPlan: {} },
+  ])
+  assert.throws(() => claimTask(m, 't-core2', 'captain'), /cannot be claimed by captain/)
+  claimTask(m, 't-core2', 'researcher')
+  assert.equal(m.tasks['t-core2'].assignee, 'researcher')
+})
+
+test('captain may claim synthesis/bookkeeping/coordination tasks', () => {
+  const m = createMission({ goal: 'g', successCriteria: ['c'] })
+  addTasks(m, [
+    { id: 't-syn', title: 'Synthesize report', kind: 'synthesis', assignee: 'captain', acceptance: ['report.md'], verificationPlan: {} },
+  ])
+  claimTask(m, 't-syn', 'captain')
+  assert.equal(m.tasks['t-syn'].assignee, 'captain')
+})
+
+test('task kind is required', () => {
+  const m = createMission({ goal: 'g', successCriteria: ['c'] })
+  assert.throws(
+    () => addTasks(m, [{ id: 't-no-kind', title: 'No kind', acceptance: ['a'], verificationPlan: {} }]),
+    /requires kind/,
+  )
 })
