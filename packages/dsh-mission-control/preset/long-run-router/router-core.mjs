@@ -142,7 +142,11 @@ export function classifyTask(text) {
   const spec = countHits(SPEC_RE, text)
   if (react > spec) return 1
   if (spec > react) return 0
-  return 'weak'
+  // Long-Run Captain: do NOT hand ambiguous missions to weak self-routing.
+  // The measured stable plan-collective band is spec (0), where the model
+  // uses collective planning language and let-me is ~0. This is the
+  // external router decision the preset exists to make.
+  return 0
 }
 
 /** Per-session mode derived from durable events (resume-safe). */

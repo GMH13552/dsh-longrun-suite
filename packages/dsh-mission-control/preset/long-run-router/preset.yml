@@ -1,8 +1,8 @@
 name: Long-Run Captain Router
 description: >
   Long-Run Captain mission framework combined with the router-standard
-  RL-shaped minimal first turn (tiny persona + shell/editor), the measured
-  Flash/Pro think-act feedback-loop boost, with a concise deep-thinking
-  instruction. After the first durable tool call the full Captain/role
-  sections and full tool catalog are restored. Applies to both the root
-  session and subagents, preserving role subagent personas.
+  spec path, forced to the measured plan-collective spec band (collective
+  planning language, let-me ~ 0) for long missions. First request uses the
+  read/edit/glob/grep plan surface; after the first durable tool call the
+  full Captain/role sections and full tool catalog are restored. Applies to
+  both the root session and subagents, preserving role subagent personas.

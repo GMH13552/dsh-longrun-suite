@@ -132,16 +132,16 @@
   name: '@deepseek-ai/dsh-agent-instructions'
   config:
     maxBytes: 65536
-# Long-run router: uses the router-standard RL-shaped minimal first turn
-# (tiny persona + shell/editor), which is the measured Flash/Pro
-# think-act feedback-loop boost, then restores the full Captain/role
-# sections and full catalog after the first durable tool/call. A concise
-# deep-thinking sentence is added to the minimal persona. Child
-# `deployment:persona` role personas are preserved from the first turn.
+# Long-run router: use the router `spec` path but FORCE the spec band
+# (mode 0) instead of weak self-routing — for long missions the measured
+# plan-collective `We` band is the stable one (let-me ~ 0). Spec keeps the
+# read/edit/glob/grep plan surface on the first request, preserves child
+# `deployment:persona` role personas, and restores the full Captain/role
+# sections + full catalog after the first durable tool/call.
 - id: router-bootstrap
   name: ./router-bootstrap-v1.mjs
   config:
-    routerMode: standard
+    routerMode: spec
 
 
 # The router bootstrap above is this preset's router-standard variant.
