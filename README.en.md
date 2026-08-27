@@ -1,5 +1,7 @@
 # DSH LongRun Suite — long-running mission tooling for DeepSeek Harness
 
+> This project explores how AI can run long-horizon research and project work. Deliverables are aimed to be as reliable as possible. It is under active development; please open an issue if you find problems — the author checks them regularly. If you find it useful, a star would be appreciated. Thank you!
+
 > One repository for long-horizon autonomous work: mission control, the Long-Run Captain preset, a strictly reviewed LLM-as-a-Verifier, and a self-wake timer. Clone and install.
 
 [中文 README](README.md)

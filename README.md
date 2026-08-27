@@ -1,5 +1,7 @@
 # DSH LongRun Suite — DeepSeek Harness 长期任务套件
 
+> 本项目意在探索 AI 在长期性科研、项目中的运行。如有交付则尽量保证可靠。尚在活跃开发中，如遇问题欢迎提交 issue，作者会及时查看；觉得好用的话给个星星，谢谢！
+
 > 一个仓库装齐：长期自主任务管理器（mission-control）+ 长跑主持人预设（Long-Run Captain）+ 严格审查修正的 LLM 验证器 + 自主定时唤醒（timer scheduler）。克隆即用。
 
 [English README](README.en.md)
