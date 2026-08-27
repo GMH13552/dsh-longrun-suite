@@ -30,7 +30,7 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 | **dsh-mission-control** | `packages/dsh-mission-control/` | mission 状态机 + `mission_*` 工具 + 元校验器 |
 | **Long-Run Captain 预设** | `preset/long-run-captain/` | 主持人 persona + 协议技能（联网调研、自适应验证、苏格拉底自查、LLM verifier 用法） |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | 参考 LLM-as-a-Verifier 论文与上游 DSH 插件、经过更严格审查修正的 LLM 验证器：`verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
-| **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` 自主定时唤醒 + 右下角倒计时面板 |
+| **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` 自主定时唤醒 + 顶部会话头定时提醒入口 |
 
 ## DSH Store 提交说明
 

@@ -25,7 +25,7 @@ This suite fixes that with file-backed mission state, a tiny generic task lifecy
 | **dsh-mission-control** | `packages/dsh-mission-control/` | mission state machine, `mission_*` tools, meta-validator |
 | **Long-Run Captain preset** | `preset/long-run-captain/` | captain persona + protocol skills (web research, adaptive verification, Socratic self-audit, LLM verifier usage) |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | LLM-as-a-Verifier based on the paper and the upstream DSH plugin, with stricter review and corrections: `verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
-| **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` self-wake + countdown panel |
+| **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` self-wake + header reminder menu |
 
 ## DSH Store submission
 
