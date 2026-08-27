@@ -44,14 +44,17 @@ See [`STORE_SUBMISSION.md`](STORE_SUBMISSION.md).
 In a Long-Run Captain session:
 
 ```text
-Start a mission: attempt to prove or disprove the Erdős–Straus conjecture.
+Start a mission: build a CLI tool that recursively scans a directory of
+Markdown files and generates an index.md with heading levels, relative paths,
+and last-modified times.
 termination_policy: success
-budget: { maxRounds: 12, maxHours: 16 }
+budget: { maxRounds: 6, maxHours: 4 }
 Success criteria:
-- Provide a complete proof, or a strictly verified counterexample
-- Verify n <= 2000 by brute force with script + results as evidence
-- Complete a literature review with verifiable sources
-- Try at least 2 different proof/construction directions, each with a precise blocker
+- The CLI recursively scans a directory and writes index.md
+- The index is organized by heading levels and includes relative paths + mtimes
+- 3 test cases are provided and all pass
+- A README explains installation and usage
+- An independent reviewer verifies the index contents
 ```
 
 Expected flow:

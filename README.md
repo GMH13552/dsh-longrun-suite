@@ -61,14 +61,16 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 在 Long-Run Captain 会话里直接说：
 
 ```text
-启动一个 mission：尝试证明或证伪 Erdős–Straus 猜想。
+启动一个 mission：开发一个命令行工具，递归扫描指定目录下的 Markdown 文件，
+按标题生成带层级、文件路径和更新时间的索引 index.md。
 termination_policy: success
-budget: { maxRounds: 12, maxHours: 16 }
+budget: { maxRounds: 6, maxHours: 4 }
 成功标准：
-- 给出完整证明，或给出严格验证的反例
-- 对 n <= 2000 完成暴力验证，脚本和结果作为证据
-- 完成文献调研，记录已知结果与证明思路
-- 尝试至少 2 个不同证明/构造方向，记录精确阻塞点
+- CLI 能递归扫描目录并生成 index.md
+- 索引按标题层级组织，包含文件相对路径和更新时间
+- 提供 3 个测试用例并全部通过
+- 输出 README 说明安装和使用方式
+- 由 reviewer 独立验证索引内容正确
 ```
 
 预期流程：
