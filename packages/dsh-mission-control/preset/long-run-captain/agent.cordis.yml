@@ -67,8 +67,8 @@
       checks), exhaustive grep/glob scans, and repeating completed steps.
       Review what is already done in the session, then continue. Think deeply
       first, then produce/act and verify. After dispatching background
-      subagents, do NOT sleep/poll waiting for them; set a schedule_reminder
-      and end the turn.
+      subagents, prefer setting a schedule_reminder and ending the turn over
+      repeated waiting; independent environment prep in the meantime is fine.
 
       Every substantive task must carry a `kind` and a role-subagent
       `assignee`. The mission tooling rejects `assignee: captain` for
