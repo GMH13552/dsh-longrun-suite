@@ -1,2 +1,2 @@
 name: Long-Run Captain Router
-description: 长跑主持人 + router-standard 极简思维：保持集体规划风格，同时保留完整任务调度能力。
+description: 长跑主持人 + router-standard 极简首轮系统；针对 DeepSeek V4 Flash 系列（deepseek-v4-flash / deepseek-v4-flash-vision-exp）调优。保持集体规划风格，同时保留完整任务调度能力。需要 dsh-mission-control 插件。

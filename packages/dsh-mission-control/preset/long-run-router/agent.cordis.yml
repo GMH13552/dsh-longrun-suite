@@ -1,17 +1,16 @@
-# The `router-standard` experimental preset: task-aware reasoning-mode routing.
+# Long-Run Captain Router: Long-Run Captain + router-standard minimal
+# first-turn system, optimized for the DeepSeek V4 Flash family
+# (`deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`).
 #
-# One preset, two reasoning modes, chosen from the session's first user
-# message before the first model request:
+# This preset keeps the full mission tools/protocol but replaces the heavy
+# always-on Captain system with the 46-character router-standard first-turn
+# system (`You are a helpful software engineer assistant.`). After the first
+# durable tool/call the full tool catalog is exposed while the minimal
+# sections stay for the whole session, preserving the `We / Let's`
+# collective-planning behavior. Role boundaries are carried by the Role Card
+# in dispatch prompts (see mission-protocol).
 #
-#   spec  (Specification-first, plan-collective)  — maintenance/fix tasks.
-#         persona: minimal RL-aligned sentence; core: read/edit/glob/grep.
-#   react (Reactive-execution, doer)              — greenfield/build tasks.
-#         persona: hands-on doer, no ceremony;    core: read/write/edit.
-#
-# After the first durable tool/call the full Standard catalog is exposed and
-# the router stops touching anything. Mode derives from durable session
-# events, so resume/reload keeps it. `dev_router_status` / `dev_router_override`
-# expose the routing to the agent itself for self-optimization.
+# It is tuned against DeepSeek V4 Flash; other models may need re-tuning.
 #
 # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
 # standing scope; every session naming it joins by scope parentage, so the
@@ -141,10 +140,12 @@
 # NOT replaced with the heavy Captain system, because that is what lets the
 # measured `We / Let's` collective-planning behavior persist. Captain
 # protocol is available through the mission skills/tools rather than being
-# injected into the always-on system prompt. Child `deployment:persona`
-# role personas are preserved in the minimal section set.
+# injected into the always-on system prompt. Under v9 child role personas
+# (`deployment:persona`) are NOT injected into the minimal subagent section
+# set; role boundaries must therefore be carried by the dispatch prompt via
+# the Role Card required by mission-protocol.
 - id: router-bootstrap
-  name: ./router-bootstrap-v8.mjs
+  name: ./router-bootstrap-v9.mjs
   config:
     routerMode: standard
 

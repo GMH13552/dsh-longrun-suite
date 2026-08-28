@@ -23,9 +23,25 @@ This suite fixes that with file-backed mission state, a tiny generic task lifecy
 | Component | Path | Purpose |
 |---|---|---|
 | **dsh-mission-control** | `packages/dsh-mission-control/` | mission state machine, `mission_*` tools, meta-validator |
-| **Long-Run Captain preset** | `preset/long-run-captain/` | captain persona + protocol skills (web research, adaptive verification, Socratic self-audit, LLM verifier usage) |
+| **Long-Run Captain preset** | `preset/long-run-captain/` | full system-prompt edition: captain persona + protocol skills (web research, adaptive verification, Socratic self-audit, LLM verifier usage) |
+| **Long-Run Captain Router preset** | `preset/long-run-router/` | same capabilities + router-standard minimal first-turn system, tuned for the DeepSeek V4 Flash family |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | LLM-as-a-Verifier based on the paper and the upstream DSH plugin, with stricter review and corrections: `verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` self-wake + header reminder menu |
+
+## The two presets
+
+The suite ships two Long-Run Captain presets with **the same mission capabilities**, differing only in first-turn system prompt shape:
+
+| Preset | Path | System prompt | Models |
+|---|---|---|---|
+| **Long-Run Captain** | `preset/long-run-captain/` | Full Long-Run Captain persona / rules / skills injected into the always-on system prompt | Any model; heavier first turn |
+| **Long-Run Captain Router** | `preset/long-run-router/` | Router-standard minimal first turn only (`You are a helpful software engineer assistant.`); role info is carried by the Role Card in dispatch prompts | **Tuned for DeepSeek V4 Flash** (`deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`) to keep `We / Let's` collective planning |
+
+Rules of thumb:
+
+- For **DeepSeek V4 Flash family**, use **Long-Run Captain Router**: lighter first turn, full mission tools / subagents / timers, and role constraints travel via the Role Card in dispatch prompts.
+- For **other models** or when you want the heavier full system prompt, use **Long-Run Captain**.
+- Both presets require `dsh-mission-control` and share the same task lifecycle, review and replanning rules.
 
 ## DSH Store submission
 
@@ -43,7 +59,7 @@ See [`STORE_SUBMISSION.md`](STORE_SUBMISSION.md).
 
 ## Quick start
 
-In a Long-Run Captain session:
+In a Long-Run Captain or Long-Run Captain Router session:
 
 ```text
 Start a mission: build a CLI tool that recursively scans a directory of
@@ -94,7 +110,8 @@ dsh-longrun-suite/
 │   ├── dsh-plugin-llm-verifier/
 │   └── dsh-timer-scheduler-ui/
 └── preset/
-    └── long-run-captain/
+    ├── long-run-captain/
+    └── long-run-router/
 ```
 
 ## Install
@@ -107,15 +124,17 @@ Requirements: Node 20+, DSH 0.1.0-rc.8+, a configured LLM provider.
 dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
 ```
 
-This installs all three plugins at once. Then install the preset (either):
+This installs all three plugins at once. Then install the presets (both, choose per session):
 
 ```bash
 # A1: from a clone
 git clone https://github.com/GMH13552/dsh-longrun-suite.git
-cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/long-run-captain
+cp -R dsh-longrun-suite/preset/long-run-router   ~/.dsh/.agent-presets/long-run-router
 
 # A2: from the installed package
-cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/long-run-captain
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-router   ~/.dsh/.agent-presets/long-run-router
 ```
 
 ### Option B: clone + one script (recommended; plugins and preset together)
@@ -130,7 +149,7 @@ cd dsh-longrun-suite
 The script:
 
 1. Adds the three plugins to your profile.
-2. Copies `long-run-captain` into `$DSH_HOME/.agent-presets/`.
+2. Copies both `long-run-captain` and `long-run-router` into `$DSH_HOME/.agent-presets/`.
 3. Prints restart instructions.
 
 Then restart DSH:
@@ -139,7 +158,7 @@ Then restart DSH:
 dsh web
 ```
 
-and start a new session with the **Long-Run Captain** preset.
+and start a new session with **Long-Run Captain** (full system prompt) or **Long-Run Captain Router** (DeepSeek V4 Flash optimized minimal edition).
 
 ### Manual install
 
@@ -150,6 +169,7 @@ dsh plugin --profile web add ./packages/dsh-timer-scheduler-ui
 
 mkdir -p "$HOME/.dsh/.agent-presets"
 cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
+cp -R preset/long-run-router   "$HOME/.dsh/.agent-presets/long-run-router"
 ```
 
 > `dsh-plugin-llm-verifier` defaults to `provider: deepseek-official` and `model: deepseek-v4-flash-vision-exp`. Edit the `llm-verifier` row in your profile `cordis.patch.yml` if your routing differs, or edit `packages/dsh-plugin-llm-verifier/cordis.patch.yml` before installing.

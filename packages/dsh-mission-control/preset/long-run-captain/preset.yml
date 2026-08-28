@@ -1,2 +1,2 @@
 name: Long-Run Captain
-description: 通用长期任务预设：主持人调度子代理、严格审验、自动重规划，最终审计通过才完成。需要 dsh-mission-control 插件。
+description: 通用长期任务预设（完整系统提示版）：主持人调度子代理、严格审验、自动重规划，最终审计通过才完成。不叠加 router-standard，适合任意模型；需要 dsh-mission-control 插件。

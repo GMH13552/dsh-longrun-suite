@@ -1,17 +1,13 @@
-# The `router-standard` experimental preset: task-aware reasoning-mode routing.
+# Long-Run Captain (plain preset): full Captain system-prompt edition.
 #
-# One preset, two reasoning modes, chosen from the session's first user
-# message before the first model request:
+# This preset does NOT use router-standard. It injects the complete
+# Long-Run Captain persona and mission protocol into the always-on system
+# prompt, so it works with any model but has a heavier first-turn prompt.
+# If you want the DeepSeek V4 Flash optimized minimal-router variant, use
+# `long-run-router` instead.
 #
-#   spec  (Specification-first, plan-collective)  — maintenance/fix tasks.
-#         persona: minimal RL-aligned sentence; core: read/edit/glob/grep.
-#   react (Reactive-execution, doer)              — greenfield/build tasks.
-#         persona: hands-on doer, no ceremony;    core: read/write/edit.
-#
-# After the first durable tool/call the full Standard catalog is exposed and
-# the router stops touching anything. Mode derives from durable session
-# events, so resume/reload keeps it. `dev_router_status` / `dev_router_override`
-# expose the routing to the agent itself for self-optimization.
+# Mission tools, role subagents, and protocol skills come from
+# dsh-mission-control and the rows/skills below.
 #
 # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
 # standing scope; every session naming it joins by scope parentage, so the

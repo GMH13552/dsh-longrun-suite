@@ -28,7 +28,8 @@ It is **not** a workflow engine with hardcoded domain steps. It provides:
 | `lib/core.js` | Pure mission logic (no DSH imports, unit-testable) |
 | `lib/index.js` | Host plugin registering `mission_*` tools |
 | `bin/mission_check.mjs` | CLI meta-validator |
-| `preset/long-run-captain/` | Agent preset with Captain persona + protocol skills |
+| `preset/long-run-captain/` | Agent preset: full Captain persona + protocol skills |
+| `preset/long-run-router/` | Agent preset: Captain + router-standard minimal first turn, tuned for DeepSeek V4 Flash |
 
 ## Install
 
@@ -48,9 +49,14 @@ dsh plugin --profile web add ./packages/dsh-mission-control
 ```sh
 mkdir -p ~/.dsh/.agent-presets
 cp -R path/to/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/long-run-captain
+cp -R path/to/dsh-longrun-suite/preset/long-run-router   ~/.dsh/.agent-presets/long-run-router
 ```
 
-Then restart DSH and start a new session with **Long-Run Captain**.
+Then restart DSH and start a new session with:
+
+- **Long-Run Captain** — full system-prompt edition, works with any model;
+- **Long-Run Captain Router** — router-standard minimal edition, tuned for
+  DeepSeek V4 Flash (`deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`).
 
 ### 3. Optional: LLM-as-a-Verifier
 

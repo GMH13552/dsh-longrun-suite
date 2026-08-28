@@ -28,9 +28,25 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 | 组件 | 路径 | 作用 |
 |---|---|---|
 | **dsh-mission-control** | `packages/dsh-mission-control/` | mission 状态机 + `mission_*` 工具 + 元校验器 |
-| **Long-Run Captain 预设** | `preset/long-run-captain/` | 主持人 persona + 协议技能（联网调研、自适应验证、苏格拉底自查、LLM verifier 用法） |
+| **Long-Run Captain 预设** | `preset/long-run-captain/` | 通用完整系统提示版：主持人 persona + 协议技能（联网调研、自适应验证、苏格拉底自查、LLM verifier 用法） |
+| **Long-Run Captain Router 预设** | `preset/long-run-router/` | 同上能力 + router-standard 极简首轮系统，针对 DeepSeek V4 Flash 系列调优 |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | 参考 LLM-as-a-Verifier 论文与上游 DSH 插件、经过更严格审查修正的 LLM 验证器：`verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
 | **dsh-timer-scheduler-ui** | `packages/dsh-timer-scheduler-ui/` | `schedule_reminder` 自主定时唤醒 + 顶部会话头定时提醒入口 |
+
+## 两个预设的区别
+
+本仓库提供两个 Long-Run Captain 预设，**能力相同，只有首轮系统提示形态不同**：
+
+| 预设 | 路径 | 系统提示 | 适用模型 |
+|---|---|---|---|
+| **Long-Run Captain** | `preset/long-run-captain/` | 完整注入 Long-Run Captain persona / 规则 / 技能 | 任意模型，首轮上下文较重 |
+| **Long-Run Captain Router** | `preset/long-run-router/` | 仅保留 router-standard 极简首轮（`You are a helpful software engineer assistant.`），角色信息通过派发 prompt 中的 Role Card 携带 | **针对 DeepSeek V4 Flash 系列调优**（`deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`），用来保持 `We / Let's` 集体规划风格 |
+
+简要规则：
+
+- 如果你用的是 **DeepSeek V4 Flash 系列**，推荐 **Long-Run Captain Router**：首轮更轻，使命门工具 / 子代理 / 定时唤醒能力完全保留，子代理角色约束通过 Role Card 写在派发提示词里。
+- 如果你用 **其他模型**，或者想要重一点的完整系统提示，选 **Long-Run Captain**。
+- 两个预设都依赖 `dsh-mission-control`，且任务流程、mission 状态机、评审/重规划规则完全一致。
 
 ## DSH Store 提交说明
 
@@ -60,7 +76,7 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 
 ## 快速开始
 
-在 Long-Run Captain 会话里直接说：
+在 Long-Run Captain 或 Long-Run Captain Router 会话里直接说：
 
 ```text
 启动一个 mission：开发一个命令行工具，递归扫描指定目录下的 Markdown 文件，
@@ -110,7 +126,8 @@ dsh-longrun-suite/
 │   ├── dsh-plugin-llm-verifier/
 │   └── dsh-timer-scheduler-ui/
 └── preset/
-    └── long-run-captain/
+    ├── long-run-captain/
+    └── long-run-router/
 ```
 
 ## 安装
@@ -123,15 +140,17 @@ dsh-longrun-suite/
 dsh plugin --profile web add github:GMH13552/dsh-longrun-suite
 ```
 
-这会一次安装全部三个插件。之后还需要装预设（二选一）：
+这会一次安装全部三个插件。之后还需要装预设（两个都装，按需选用）：
 
 ```bash
 # A1: 从仓库目录复制
 git clone https://github.com/GMH13552/dsh-longrun-suite.git
-cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+cp -R dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/long-run-captain
+cp -R dsh-longrun-suite/preset/long-run-router   ~/.dsh/.agent-presets/long-run-router
 
 # A2: 或从 profile 的 node_modules 里复制（版本可能与插件包不同）
-cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-captain ~/.dsh/.agent-presets/long-run-captain
+cp -R ~/.dsh/profiles/web/node_modules/dsh-longrun-suite/preset/long-run-router   ~/.dsh/.agent-presets/long-run-router
 ```
 
 ### 方式 B：克隆 + 一键脚本（推荐，插件和预设一起装）
@@ -146,7 +165,7 @@ cd dsh-longrun-suite
 安装脚本会：
 
 1. 把三个插件加入你的 profile；
-2. 把 `long-run-captain` 预设复制到 `$DSH_HOME/.agent-presets/`；
+2. 把 `long-run-captain` 和 `long-run-router` 两个预设复制到 `$DSH_HOME/.agent-presets/`；
 3. 打印重启提示。
 
 重启 DSH：
@@ -155,7 +174,7 @@ cd dsh-longrun-suite
 dsh web
 ```
 
-新建会话时选择 **Long-Run Captain** 预设即可。
+新建会话时选择 **Long-Run Captain**（通用完整系统提示）或 **Long-Run Captain Router**（DeepSeek V4 Flash 优化极简版）预设。
 
 ### 手动安装
 
@@ -168,6 +187,7 @@ dsh plugin --profile web add ./packages/dsh-timer-scheduler-ui
 
 mkdir -p "$HOME/.dsh/.agent-presets"
 cp -R preset/long-run-captain "$HOME/.dsh/.agent-presets/long-run-captain"
+cp -R preset/long-run-router   "$HOME/.dsh/.agent-presets/long-run-router"
 ```
 
 > `dsh-plugin-llm-verifier` 默认使用 `provider: deepseek-official` + `model: deepseek-v4-flash-vision-exp`。如果你的模型路由不同，改 profile 的 `cordis.patch.yml` 中 `llm-verifier` 行的 `provider` / `model`，或者改本仓库 `packages/dsh-plugin-llm-verifier/cordis.patch.yml` 后重新安装。
