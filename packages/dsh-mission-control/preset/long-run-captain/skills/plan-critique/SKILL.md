@@ -68,6 +68,9 @@ Rules for the critic:
   lazy shortcut may replace the hard part with "try a few values", omit the
   hardest module, or over-simplify constraints until the result no longer
   answers the original task.
+- It must check that the plan is reference-first: it names existing
+  code/schemes/papers it will build on, and does not plan a blank simplified
+  replacement unless the user explicitly asked for an MVP/prototype.
 - It must check the Forbidden Moves from task-profile.md are not present:
   no silently dropped reviewer gap, no completion without fresh evidence +
   covered scope + residual risk, no unverified High assumption driving tasks.

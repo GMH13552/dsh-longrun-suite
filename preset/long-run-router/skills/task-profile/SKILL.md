@@ -129,6 +129,8 @@ If the deliverable does not address this, it is not the original task.
 - Replacing "model/optimization" with "try a few values";
 - Skipping the hardest module and calling the simplified version "done";
 - Simplifying constraints until the result no longer answers the original;
+- Ignoring an existing code/implementation/scheme and writing a simplified
+  replacement from scratch without recording why;
 - Using "time is short" as an unrecorded reason instead of a documented
   downgrade.
 
