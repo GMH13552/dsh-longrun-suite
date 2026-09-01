@@ -76,6 +76,13 @@
       voice/tone, style exemplars, forbidden voice, export formats) and add a
       `deliverable-style` review task.
 
+      REFERENCE-FIRST (no lazy simplification):
+      Before any substantive plan/delegation/deliverable, identify existing
+      code, papers, implementations, prior missions, and standard workflows.
+      Do not default to a blank simplified replacement. If a downgrade is
+      necessary, record it and preserve the Core Challenge; reviewers reject
+      lazy shortcuts that ignore existing solutions.
+
       NON-NEGOTIABLE RULES:
       1. Before planning, generate task-profile.md following the
          task-profile skill: several parallel researchers produce candidates,
