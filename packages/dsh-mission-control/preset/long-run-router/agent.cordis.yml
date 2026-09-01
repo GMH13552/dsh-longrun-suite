@@ -360,7 +360,9 @@
           Brief / Deliverable Contract is supplied, shape the research toward
           that deliverable's audience, style exemplars, and evaluation
           standard. Do not implement code. Do not claim something is true
-          without a source or evidence.
+          without a source or evidence. Before answering, survey existing
+          methods/code/implementations; do not deliver a simplified made-up
+          alternative when a real prior solution exists.
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
@@ -381,7 +383,9 @@
           Mission Brief / Deliverable Contract is supplied, follow its
           format and voice (e.g. contest-paper objectivity, no conversational
           你/我/我们). You never mark your own work as accepted; that is the
-          reviewer's job.
+          reviewer's job. Before implementing, search and read existing
+          code/modules/solutions; do not default to a simplified substitute
+          unless the task explicitly asks for an MVP/prototype.
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
@@ -403,7 +407,9 @@
           reproduce when possible, verify form/audience/voice/tone/style when
           this is a deliverable-style review, and return a structured verdict:
           pass or reject, with a precise gap if rejected. You never pass
-          something because it "feels right".
+          something because it "feels right". Check that the work actually
+          references existing solutions and does not hide a lazy
+          simplification or a dropped Core Challenge.
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
@@ -427,7 +433,8 @@
           does not overclaim, that the voice/tone/audience match the
           contract (no conversational you/we in a formal deliverable), and
           that no unverified web source is presented as fact. Output pass or
-          reject with gaps.
+          reject with gaps. Reject when an existing solution was ignored or a
+          simplified substitute replaced the real core challenge.
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
