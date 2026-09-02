@@ -356,6 +356,15 @@ export function apply(ctx) {
         gap: args.gap,
       })
       saveMission(cwd, mission)
+      // Let other host plugins (timer-scheduler) clean up stale reminders for
+      // a task that has now settled (accepted or rejected).
+      ctx.emit('mission/task-settled', {
+        taskId: args.task_id,
+        missionId: mission.id,
+        verdict: args.verdict,
+        sessionId: exec.agent.id,
+        cwd,
+      })
       if (args.verdict === 'reject') {
         return `Review recorded for ${args.task_id}: reject by ${args.reviewer}\nGap: ${args.gap}\n\nThis task is now blocked. You must replan and add a follow-up task with replaces=${args.task_id} before the mission can be completed. Do not stop here: generate a new direction, fix the gap, or broaden the approach.`
       }
