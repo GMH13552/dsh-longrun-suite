@@ -475,7 +475,9 @@ Completion is strict:
    voice/tone.
 6. Write `mission-legacy.md` following the `lessons` skill: durable results,
    verified reusable lessons, pitfalls likely to recur, and what remains
-   unsolved. This is the cross-mission handoff.
+   unsolved. This is the cross-mission handoff. If the mission may recur or
+   its structure is reusable, also write a lightweight
+   `mission-cases/case-<mission-id>.md` (see the `lessons` skill).
 7. Call `mission_final_audit` with a `mapping` from every
    `success_criteria` index to an accepted task and evidence paths.
 8. If any criterion is unmapped, or a mapped task is not accepted, or an
