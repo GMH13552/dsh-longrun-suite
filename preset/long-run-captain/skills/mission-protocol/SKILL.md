@@ -216,6 +216,23 @@ Rules:
 - Reviewers must reject work that ignores an obvious existing solution or
   uses a lazy shortcut to avoid the hard part.
 
+### Long-running remote jobs / experiments (stop-loop rule)
+
+For any long-running remote job (training, eval, upload, experiment):
+
+- After launching it, do NOT keep the turn alive to poll. Record PID / log
+  path / checkpoint path, set **one** `schedule_reminder` for the next check,
+  then end the turn.
+- When the reminder wakes you, do exactly **one** status check:
+  - if complete: collect results, write the deliverable, cancel any still
+    pending reminder, and report;
+  - if still running: schedule the next reminder and end the turn again.
+- Do not use `bash sleep` as a waiting loop. The reminder is the heartbeat.
+- Do not restart/adjust a job more than once per check unless there is a
+  concrete fix; after any restart, schedule again and end.
+- If a job needs a human-level decision or is taking longer than reasonable,
+  stop and report the situation instead of loop-waiting indefinitely.
+
 ### Role Card (MUST be embedded in every subagent dispatch prompt)
 
 Under router-standard, subagents no longer receive their role
@@ -250,6 +267,9 @@ Role Card: engineer
   合同要求正式时不要写成交谈式“你/我/我们”。
 - 参考优先：实现前先搜索/阅读现有实现、模块、库、协议、相似案例；
   除非任务明确要求 MVP/原型，否则禁止交付“简化替代品”，并记录参考来源。
+- 若负责远程训练/长实验：启动后最多设一个 schedule_reminder（尽可能带
+  subject/job id），然后结束回合；提醒唤醒时只查一次，未完成就再设提醒并
+  结束；不要用 bash sleep 循环等待。
 - 输出时给出验证结果和可复现命令/证据路径。
 - 后台任务收尾：不要只依赖完成通知；结束前调用 job_output(wait=true)
   或用 schedule_reminder 兜底唤醒。

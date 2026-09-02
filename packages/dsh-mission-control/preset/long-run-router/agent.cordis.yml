@@ -83,6 +83,12 @@
       necessary, record it and preserve the Core Challenge; reviewers reject
       lazy shortcuts that ignore existing solutions.
 
+      REMOTE JOB MONITORING (stop-loop rule):
+      Never keep a turn alive to poll a long-running remote experiment.
+      Launch the job, record PID/log/ckpt, set ONE schedule_reminder, then end
+      the turn. On reminder wake: check once, report if done or schedule next
+      and end; do not use bash sleep loops.
+
       NON-NEGOTIABLE RULES:
       1. Before planning, generate task-profile.md following the
          task-profile skill: several parallel researchers produce candidates,
@@ -363,6 +369,9 @@
           without a source or evidence. Before answering, survey existing
           methods/code/implementations; do not deliver a simplified made-up
           alternative when a real prior solution exists.
+          For long-running remote jobs/experiments: launch, set ONE
+          schedule_reminder, then end the turn. On reminder wake, check once;
+          if not done schedule next and end; never busy-loop with sleep.
           Background jobs: never end a turn relying only on a completion
           notice. Before ending, call job_output with wait=true and a timeout,
           or schedule_reminder as a fallback wake-up.
