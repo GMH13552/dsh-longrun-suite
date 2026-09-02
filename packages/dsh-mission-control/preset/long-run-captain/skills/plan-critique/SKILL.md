@@ -71,6 +71,15 @@ Rules for the critic:
 - It must check that the plan is reference-first: it names existing
   code/schemes/papers it will build on, and does not plan a blank simplified
   replacement unless the user explicitly asked for an MVP/prototype.
+- It must check the Candidate ladder: each substantive task has A/B/C, not
+  just one method name; hard filters are applied and invalid candidates are
+  rejected rather than averaged in.
+- It must check module contracts: cross-task edges specify artifact, format,
+  availability, uncertainty, and fallback; downstream tasks do not silently
+  consume uncertain upstream output as exact.
+- It must check innovation evidence: anything called “new/creative” has a
+  stated baseline defect, change, measurable effect, and boundary, or is
+  explicitly labeled unverified.
 - It must check the Forbidden Moves from task-profile.md are not present:
   no silently dropped reviewer gap, no completion without fresh evidence +
   covered scope + residual risk, no unverified High assumption driving tasks.

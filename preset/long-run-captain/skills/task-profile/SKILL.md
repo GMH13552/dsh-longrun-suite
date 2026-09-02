@@ -92,6 +92,34 @@ Rules:
 - When a high-risk assumption is rejected, update task-profile.md and replan
   anything built on it.
 
+## Structure diagnosis (before method selection)
+
+For each substantive task, write the generic input/decision/output contract
+in task-profile.md or the task's own plan:
+
+```text
+Input:       raw material actually available (files, data, code, evidence, constraints)
+Decision:    what must be decided / inferred / produced
+Output:      the concrete artifact and its type
+             (number, ranking, route, report, model, code, procedure, distribution)
+Success:     observable criterion an independent reviewer can check
+Downstream:  which later tasks consume this output
+```
+
+Also classify the problem along generic structural axes, not only by domain
+keywords:
+
+- goal type: inference / prediction / evaluation / optimization / mechanism explanation / design
+- data shape: table / time series / spatial / network / image / text / mixed
+- dependency shape: series, branch, merge, feedback, layered
+- uncertainty: none / measurement / parameter / stochastic / scenario
+- constraints: hard vs soft; continuous, integer, path, schedule, or policy decision
+- evidence: what would disprove the chosen direction
+
+This mirrors the math-modeling skill's “input → decision → output → criterion”
+rule, stripped of domain content. It prevents choosing a method because a
+keyword appeared or because it is the model's default.
+
 ## Forbidden moves
 
 Borrowed from the community's "Forbidden moves" lists. The profile must

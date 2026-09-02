@@ -74,6 +74,28 @@ Good acceptance criteria are:
 Bad: "improve the model"
 Good: "benchmark A improves by >=3% over baseline with the same seed; benchmark B does not regress; metrics.json and run.log are committed."
 
+## Minimum validation package (default for non-trivial tasks)
+
+Unless the task genuinely cannot support a layer, a task's `verificationPlan`
+should cover at least these four layers:
+
+1. **Internal correctness** — dimensions/units, bounds, feasibility, convergence,
+   assertions, no data leakage, no future-feature usage.
+2. **Primary / explanatory evidence** — correct split (holdout, rolling-origin,
+   group-aware, or independent re-derivation); one main metric plus at least one
+   complementary metric.
+3. **Comparative evidence** — a meaningful baseline and, when an innovation is
+   claimed, an ablation; identical seeds/split/budget across comparisons.
+4. **Uncertainty / robustness evidence** — sensitivity to key parameters,
+   weights, scenarios, or data perturbations; intervals/bootstrap; or an explicit
+   recorded reason why not needed.
+
+Also add the most likely **failure/edge scenario**: how the result could be
+wrong, and what that would look like.
+
+This is a floor, not a ceiling. If a layer cannot be satisfied, record why and
+lower the claim strength instead of silently skipping it.
+
 ## Escalating when blocked
 
 If a task is rejected, the captain should usually create a new verification
