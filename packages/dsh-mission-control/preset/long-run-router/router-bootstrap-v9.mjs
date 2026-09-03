@@ -58,7 +58,7 @@ export function apply(ctx, config) {
   const routerMode = config.routerMode === 'spec' ? 'spec' : 'standard'
   const RL_PERSONA = 'You are a helpful software engineer assistant.'
   const MISSION_TOOL_USAGE =
-    'Long-Run hard-task flow: load the `skill` named hard-task-flow for the full order. Short version: 1) wiki_search + mission_start + task-profile; 2) plan.md + method-card + plan-critique; 3) mission_add_tasks with capabilities, then mission_claim/heartbeat/release; 4) publish/consume artifacts; 5) mission_submit -> independent review -> replan on reject; 6) before final: mission_blind_review + wiki_lint + wiki_write, then mission_final_audit + mission_check + mission_complete. Do not skip steps that apply.'
+    'Long-Run hard-task flow is a LOOP, not a line: load the `skill` named hard-task-flow. Forward: wiki_search + mission_start + task-profile -> plan.md + method-card + plan-critique -> mission_add_tasks(capabilities) + claim/heartbeat/release -> publish/consume artifacts -> mission_submit + independent review -> results/iterate. Backward on failure: reject -> replan + replaces; pilot not_met -> revise; blind-review gap -> revision loop; worker crash -> lease reclaim. Before final: mission_blind_review + wiki_lint + wiki_write + mission_final_audit + mission_check + mission_complete.'
 
   /** spec 路由模式的首轮工具面（旧行为；weak 也走 default 面）。 */
   function legacyCore(mode) {

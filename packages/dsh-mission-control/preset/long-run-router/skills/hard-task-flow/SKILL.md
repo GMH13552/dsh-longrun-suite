@@ -10,6 +10,38 @@ domain-neutral: the same shape applies to research, software, experiments,
 writing, and operations. It is a guide, not a hard-code: missions may skip a
 step when it genuinely does not apply, but should not skip it silently.
 
+## Important: this is a LOOP, not a straight line
+
+The numbered stages below are the forward direction, but failures send you
+backward. A hard task is a directed graph with cycles, not a pipeline.
+
+```text
+               ┌──────────────────────────────────────────────┐
+               │                                              │
+               ▼                                              │
+ intake ──▶ profile ──▶ plan ──▶ claim/execute ──▶ verify ──▶ analyze ──▶ final
+    │          │           │            │              │          │
+    │          │           │            +── reject ────┘          │
+    │          │           └── critic/plan reject ────────────────┘
+    │          └── new findings / hypothesis changed ──────────────┘
+    └── memory/wiki feeds FUTURE intake ────────────────────────────┘
+```
+
+Main backward edges:
+
+- profile critic reject -> back to profile/plan.
+- plan critic reject -> back to plan.
+- worker lease expiry -> task reclaimed -> back to execute.
+- review reject -> replan + `replaces` -> execute again.
+- pilot `not_met` -> revise hypothesis or stop -> back to profile.
+- blind review reject / `calibration_gap` high -> revision loop -> execute again.
+- critic `needs_more_research` -> next research round -> back to research/plan.
+- new findings -> replan -> back to plan/execute.
+- cross-mission: `.memory`/wiki feeds future intake.
+
+Use forward flow when things work; use backward arrows when a gate fails.
+Do not pretend a rejection is the end.
+
 ## 0. Intake
 
 1. Read the user's goal.
