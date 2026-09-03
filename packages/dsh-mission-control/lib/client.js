@@ -8,38 +8,38 @@ window.__ModuleLoader__.load({
     var React = require('react')
 
     var CSS = [
-      '.dsh-mission-view{height:100%;overflow:auto;box-sizing:border-box;background:var(--dsw-alias-bg-base);position:relative;}',
-      '.dsh-mission-topbar{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border-bottom:1px solid var(--dsw-alias-border-l1);}',
-      '.dsh-mission-line1{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
+      '.dsh-mission-view{height:100%;display:flex;flex-direction:column;box-sizing:border-box;background:var(--dsw-alias-bg-base);}',
+      '.dsh-mission-topbar{display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1);}',
+      '.dsh-mission-line1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}',
       '.dsh-mission-title{font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
-      '.dsh-mission-pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:1px 8px;font-size:11px;line-height:18px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);}',
+      '.dsh-mission-pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:0 8px;font-size:11px;line-height:18px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);}',
       '.dsh-mission-pill-accepted{background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 12%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 40%,transparent);color:var(--dsw-alias-state-success-primary);}',
       '.dsh-mission-pill-needs_review{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 12%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 40%,transparent);color:var(--dsw-alias-state-warn-primary);}',
       '.dsh-mission-pill-active{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 12%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-brand-primary) 40%,transparent);color:var(--dsw-alias-brand-primary);}',
       '.dsh-mission-pill-rejected{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 12%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 40%,transparent);color:var(--dsw-alias-state-error-primary);}',
       '.dsh-mission-sub{font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.4;word-break:break-word;}',
-      '.dsh-mission-graph-wrap{position:relative;overflow:auto;padding:8px;}',
-      '.dsh-mission-graph{display:block;background:var(--dsw-alias-bg-base);}',
-      '.dsh-node{height:100%;box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-2);padding:6px 8px;display:flex;flex-direction:column;gap:2px;overflow:hidden;cursor:pointer;}',
-      '.dsh-node-open{border-left:4px solid var(--dsw-alias-border-l2);}',
-      '.dsh-node-active{border-left:4px solid var(--dsw-alias-brand-primary);}',
-      '.dsh-node-needs_review{border-left:4px solid var(--dsw-alias-state-warn-primary);}',
-      '.dsh-node-accepted{border-left:4px solid var(--dsw-alias-state-success-primary);}',
-      '.dsh-node-rejected{border-left:4px solid var(--dsw-alias-state-error-primary);}',
-      '.dsh-node-title{font-size:12px;line-height:1.3;color:var(--dsw-alias-label-primary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}',
-      '.dsh-node-meta{font-size:10px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-      '.dsh-node-sub{font-size:10px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-      '.dsh-node-tooltip{position:fixed;z-index:99999;max-width:300px;box-sizing:border-box;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;box-shadow:var(--dsw-shadow-lv3);padding:10px 12px;display:flex;flex-direction:column;gap:6px;pointer-events:none;color:var(--dsw-alias-label-primary);}',
-      '.dsh-tooltip-title{font-size:12px;font-weight:600;line-height:1.35;word-break:break-word;}',
-      '.dsh-tooltip-meta{font-size:10px;color:var(--dsw-alias-label-secondary);display:flex;flex-wrap:wrap;gap:4px;}',
-      '.dsh-tooltip-section{font-size:11px;line-height:1.45;}',
-      '.dsh-tooltip-label{font-size:10px;color:var(--dsw-alias-label-secondary);text-transform:uppercase;letter-spacing:.03em;}',
-      '.dsh-tooltip-list{font-size:11px;line-height:1.5;color:var(--dsw-alias-label-primary);padding-left:14px;margin:2px 0 0;}',
+      '.dsh-mission-main{flex:1;display:flex;min-height:0;}',
+      '.dsh-mission-canvas{flex:1;min-width:0;position:relative;overflow:hidden;background:var(--dsw-alias-bg-base);}',
+      '.dsh-mission-canvas svg{display:block;width:100%;height:100%;}',
+      '.dsh-mission-side{width:300px;min-width:260px;max-width:340px;box-sizing:border-box;border-left:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}',
+      '.dsh-side-section{display:flex;flex-direction:column;gap:5px;}',
+      '.dsh-side-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary);line-height:1.35;word-break:break-word;}',
+      '.dsh-side-label{font-size:10px;color:var(--dsw-alias-label-secondary);text-transform:uppercase;letter-spacing:.03em;}',
+      '.dsh-side-list{font-size:11px;line-height:1.5;color:var(--dsw-alias-label-primary);padding-left:14px;margin:2px 0 0;}',
+      '.dsh-side-empty{font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.5;}',
+      '.dsh-side-chip{display:inline-flex;align-items:center;border-radius:999px;padding:0 7px;font-size:10px;line-height:17px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);}',
+      '.dsh-node{height:100%;box-sizing:border-box;border-radius:10px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);display:flex;align-items:center;gap:7px;padding:0 9px;overflow:hidden;cursor:pointer;}',
+      '.dsh-node-dot{width:9px;height:9px;border-radius:50%;flex:none;}',
+      '.dsh-node-label{font-size:11px;color:var(--dsw-alias-label-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.dsh-node-id{font-size:10px;color:var(--dsw-alias-label-secondary);flex:none;}',
+      '.dsh-node-active{border-color:color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,transparent);}',
+      '.dsh-node-needs_review{border-color:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 8%,transparent);}',
+      '.dsh-node-accepted{border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 8%,transparent);}',
+      '.dsh-node-rejected{border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 8%,transparent);}',
       '.dsh-mission-empty{padding:48px 20px;text-align:center;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.6;}',
-      '.dsh-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}',
     ].join('')
 
-    var CSS_ID = 'dsh-mission-control:graph'
+    var CSS_ID = 'dsh-mission-control:graph2'
 
     function ensureStyles() {
       if (typeof document !== 'undefined' && document.querySelector('style[data-plugin-css=' + JSON.stringify(CSS_ID) + ']') === null) {
@@ -51,12 +51,6 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function fmtTime(ms) {
-      if (!ms) return ''
-      var d = new Date(ms)
-      var p = function (n) { return n < 10 ? '0' + n : String(n) }
-      return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())
-    }
     function fmtRemain(ms) {
       if (typeof ms !== 'number') return ''
       if (ms <= 0) return '\u5df2\u8fc7\u671f'
@@ -86,7 +80,14 @@ window.__ModuleLoader__.load({
       if (s === 'needs_review') return 'dsh-node-needs_review'
       if (s === 'active') return 'dsh-node-active'
       if (s === 'rejected') return 'dsh-node-rejected'
-      return 'dsh-node-open'
+      return ''
+    }
+    function dotColor(s) {
+      if (s === 'accepted') return 'var(--dsw-alias-state-success-primary)'
+      if (s === 'needs_review') return 'var(--dsw-alias-state-warn-primary)'
+      if (s === 'active') return 'var(--dsw-alias-brand-primary)'
+      if (s === 'rejected') return 'var(--dsw-alias-state-error-primary)'
+      return 'var(--dsw-alias-label-secondary)'
     }
     function roleLabel(a) {
       if (a === 'final_reviewer') return '\u6700\u7ec8\u8bc4\u5ba1'
@@ -121,18 +122,18 @@ window.__ModuleLoader__.load({
       })
       var maxLevel = 0
       Object.keys(cols).forEach(function (k) { if (Number(k) > maxLevel) maxLevel = Number(k) })
-      var nodeW = 170, nodeH = 60, gapX = 78, gapY = 34, pad = 18
+      var nodeW = 150, nodeH = 32, gapX = 42, gapY = 52, pad = 30
       var positions = {}
-      var maxRows = 0
+      var maxCols = 0
       Object.keys(cols).forEach(function (k) {
         var arr = cols[k]
-        if (arr.length > maxRows) maxRows = arr.length
+        if (arr.length > maxCols) maxCols = arr.length
         arr.forEach(function (t, i) {
-          positions[t.id] = { x: pad + Number(k) * (nodeW + gapX), y: pad + i * (nodeH + gapY) }
+          positions[t.id] = { x: pad + i * (nodeW + gapX), y: pad + Number(k) * (nodeH + gapY) }
         })
       })
-      var width = pad * 2 + (maxLevel + 1) * nodeW + maxLevel * gapX
-      var height = pad * 2 + maxRows * nodeH + Math.max(0, maxRows - 1) * gapY
+      var width = pad * 2 + maxCols * nodeW + Math.max(0, maxCols - 1) * gapX
+      var height = pad * 2 + (maxLevel + 1) * nodeH + maxLevel * gapY
       return { byId: byId, positions: positions, width: width, height: height, nodeW: nodeW, nodeH: nodeH }
     }
 
@@ -148,9 +149,12 @@ window.__ModuleLoader__.load({
         var errorState = React.useState(null)
         var error = errorState[0]
         var setError = errorState[1]
-        var tipState = React.useState(null)
-        var tip = tipState[0]
-        var setTip = tipState[1]
+        var activeState = React.useState(null)
+        var active = activeState[0]
+        var setActive = activeState[1]
+        var chosenState = React.useState(null)
+        var chosen = chosenState[0]
+        var setChosen = chosenState[1]
 
         React.useEffect(function () {
           var alive = true
@@ -209,19 +213,16 @@ window.__ModuleLoader__.load({
           ['\u5df2\u901a\u8fc7', counts.accepted || 0],
           ['\u5df2\u62d2\u7edd', counts.rejected || 0],
         ]
-        var statPills = statItems.map(function (it, idx) {
+        var statPills = statItems.map(function (it) {
           return React.createElement('span', { className: 'dsh-mission-pill', key: it[0] }, it[0] + ' ' + it[1])
         })
-
-        var hasTaskReview = tasks.some(function (t) { return t.assignee === 'reviewer' || (t.kind === 'review' && t.assignee !== 'final_reviewer') })
-        var hasFinalReview = tasks.some(function (t) { return t.assignee === 'final_reviewer' })
-        var reviewPills = []
-        if (hasTaskReview) reviewPills.push(React.createElement('span', { className: 'dsh-mission-pill', key: 'task' }, '\u4efb\u52a1\u7ea7\u8bc4\u5ba1'))
-        if (hasFinalReview) reviewPills.push(React.createElement('span', { className: 'dsh-mission-pill dsh-mission-pill-needs_review', key: 'final' }, '\u6700\u7ec8\u8bc4\u5ba1'))
 
         var artifacts = mission.artifacts || []
         var wiki = mission.wiki || {}
         var cats = wiki.categories || {}
+
+        var hasTaskReview = tasks.some(function (t) { return t.assignee === 'reviewer' || (t.kind === 'review' && t.assignee !== 'final_reviewer') })
+        var hasFinalReview = tasks.some(function (t) { return t.assignee === 'final_reviewer' })
 
         var edges = []
         tasks.forEach(function (t) {
@@ -230,13 +231,13 @@ window.__ModuleLoader__.load({
             var p1 = from && layout.positions[from.id]
             var p2 = layout.positions[t.id]
             if (!p1 || !p2) return
-            var x1 = p1.x + layout.nodeW
-            var y1 = p1.y + layout.nodeH / 2
-            var x2 = p2.x
-            var y2 = p2.y + layout.nodeH / 2
-            var mx = (x1 + x2) / 2
+            var x1 = p1.x + layout.nodeW / 2
+            var y1 = p1.y + layout.nodeH
+            var x2 = p2.x + layout.nodeW / 2
+            var y2 = p2.y
+            var my = (y1 + y2) / 2
             edges.push(React.createElement('path', {
-              d: 'M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2,
+              d: 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2,
               fill: 'none',
               stroke: 'var(--dsw-alias-border-l2)',
               strokeWidth: 1.4,
@@ -258,61 +259,94 @@ window.__ModuleLoader__.load({
           },
             React.createElement('div', {
               className: 'dsh-node ' + nodeClass(t.status),
-              onMouseEnter: function () {
-                setTip({ task: t, x: 0, y: 0 })
-              },
-              onMouseMove: function (e) {
-                setTip({ task: t, x: e.clientX + 14, y: e.clientY + 14 })
-              },
-              onMouseLeave: function () {
-                setTip(null)
-              },
+              onMouseEnter: function () { setActive(t) },
+              onMouseLeave: function () { setActive(null) },
+              onClick: function () { setChosen(t) },
             },
-              React.createElement('div', { className: 'dsh-node-title' }, t.title),
-              React.createElement('div', { className: 'dsh-node-meta' }, t.id + ' \u00b7 ' + statusLabel(t.status)),
-              React.createElement('div', { className: 'dsh-node-sub' }, (roleLabel(t.assignee) || t.kind || '')),
+              React.createElement('span', { className: 'dsh-node-dot', style: { background: dotColor(t.status) } }),
+              React.createElement('span', { className: 'dsh-node-id' }, t.id),
+              React.createElement('span', { className: 'dsh-node-label' }, t.title),
             ),
           )
         })
 
-        var tooltip = null
-        if (tip && tip.task) {
-          var task = tip.task
-          var accepted = (task.acceptance || []).slice(0, 3)
+        var current = active || chosen
+        var side = null
+        if (current) {
+          var task = current
           var evidence = task.requiredEvidence || []
-          tooltip = React.createElement('div', {
-            className: 'dsh-node-tooltip',
-            style: { left: tip.x, top: tip.y },
-          },
-            React.createElement('div', { className: 'dsh-tooltip-title' }, task.title),
-            React.createElement('div', { className: 'dsh-tooltip-meta' },
-              React.createElement('span', null, task.id),
-              React.createElement('span', null, statusLabel(task.status)),
-              task.assignee ? React.createElement('span', null, roleLabel(task.assignee)) : null,
-              task.kind ? React.createElement('span', null, task.kind) : null,
-              task.scrutinyLevel ? React.createElement('span', null, task.scrutinyLevel) : null,
+          side = React.createElement('div', { className: 'dsh-mission-side' },
+            React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '任务'),
+              React.createElement('div', { className: 'dsh-side-title' }, task.title),
+              React.createElement('div', { className: 'dsh-mission-line1' },
+                React.createElement('span', { className: 'dsh-mission-pill' }, task.id),
+                React.createElement('span', { className: 'dsh-mission-pill ' + pillClass(task.status) }, statusLabel(task.status)),
+                task.assignee ? React.createElement('span', { className: 'dsh-mission-pill' }, roleLabel(task.assignee)) : null,
+                task.kind ? React.createElement('span', { className: 'dsh-mission-pill' }, task.kind) : null,
+                task.scrutinyLevel ? React.createElement('span', { className: 'dsh-mission-pill' }, task.scrutinyLevel) : null,
+              ),
             ),
-            (task.dependencies && task.dependencies.length > 0) ? React.createElement('div', { className: 'dsh-tooltip-section' },
-              React.createElement('div', { className: 'dsh-tooltip-label' }, '\u4f9d\u8d56'),
-              React.createElement('div', null, task.dependencies.join(' \u00b7 ')),
+            (task.dependencies && task.dependencies.length > 0) ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '依赖'),
+              React.createElement('div', { className: 'dsh-side-empty' }, task.dependencies.join(' \u00b7 ')),
             ) : null,
-            accepted.length > 0 ? React.createElement('div', { className: 'dsh-tooltip-section' },
-              React.createElement('div', { className: 'dsh-tooltip-label' }, '\u9a8c\u6536\u6807\u51c6'),
-              React.createElement('ul', { className: 'dsh-tooltip-list' }, accepted.map(function (a, i) {
-                return React.createElement('li', { key: i }, a)
-              })),
+            (task.acceptance && task.acceptance.length > 0) ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '验收标准'),
+              React.createElement('ul', { className: 'dsh-side-list' }, task.acceptance.map(function (a, i) { return React.createElement('li', { key: i }, a) })),
             ) : null,
-            task.review ? React.createElement('div', { className: 'dsh-tooltip-section' },
-              React.createElement('div', { className: 'dsh-tooltip-label' }, task.assignee === 'final_reviewer' || (task.kind === 'review' && task.assignee === 'reviewer') ? '\u6700\u7ec8\u8bc4\u5ba1' : '\u4efb\u52a1\u8bc4\u5ba1'),
-              React.createElement('div', null, (task.review.verdict === 'pass' ? '\u901a\u8fc7' : task.review.verdict === 'reject' ? '\u62d2\u7edd' : task.review.verdict) + ' \u00b7 ' + (task.review.reviewer || '?')),
+            task.review ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, task.assignee === 'final_reviewer' ? '最终评审' : '任务评审'),
+              React.createElement('div', { className: 'dsh-side-empty' }, (task.review.verdict === 'pass' ? '通过' : task.review.verdict === 'reject' ? '拒绝' : task.review.verdict) + ' \u00b7 ' + (task.review.reviewer || '?')),
             ) : null,
-            task.claim ? React.createElement('div', { className: 'dsh-tooltip-section' },
-              React.createElement('div', { className: 'dsh-tooltip-label' }, '\u5360\u7528 / \u79df\u671f'),
-              React.createElement('div', null, task.claim.worker + ' \u00b7 ' + fmtRemain(task.claim.leaseRemainingMs)),
+            task.claim ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '占用 / 租期'),
+              React.createElement('div', { className: 'dsh-side-empty' }, task.claim.worker + ' \u00b7 ' + fmtRemain(task.claim.leaseRemainingMs)),
             ) : null,
-            evidence.length > 0 ? React.createElement('div', { className: 'dsh-tooltip-section' },
-              React.createElement('div', { className: 'dsh-tooltip-label' }, '\u5fc5\u4ea4\u8bc1\u636e'),
-              React.createElement('div', null, evidence.join(' \u00b7 ')),
+            evidence.length > 0 ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '必交证据'),
+              React.createElement('div', { className: 'dsh-side-empty' }, evidence.join(' \u00b7 ')),
+            ) : null,
+            (task.capabilities && task.capabilities.length > 0) ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '能力'),
+              React.createElement('div', { className: 'dsh-mission-line1' }, task.capabilities.map(function (c) { return React.createElement('span', { className: 'dsh-side-chip', key: c }, c) })),
+            ) : null,
+            task.leaseBlocked ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '封锁'),
+              React.createElement('div', { className: 'dsh-side-empty' }, task.blockedReason || 'claim 次数超限'),
+            ) : null,
+          )
+        } else {
+          side = React.createElement('div', { className: 'dsh-mission-side' },
+            React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '成功标准'),
+              React.createElement('ul', { className: 'dsh-side-list' }, (mission.successCriteria || []).map(function (c, i) { return React.createElement('li', { key: i }, c) })),
+            ),
+            React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '评审层级'),
+              React.createElement('div', { className: 'dsh-mission-line1' },
+                hasTaskReview ? React.createElement('span', { className: 'dsh-side-chip' }, '任务级评审') : null,
+                hasFinalReview ? React.createElement('span', { className: 'dsh-side-chip' }, '最终评审') : null,
+              ),
+              React.createElement('div', { className: 'dsh-side-empty' }, '悬停节点可查看任务详情'),
+            ),
+            React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '黑板产物 ' + artifacts.length),
+              artifacts.length === 0 ? React.createElement('div', { className: 'dsh-side-empty' }, '暂无') : artifacts.slice(0, 6).map(function (a) {
+                return React.createElement('div', { className: 'dsh-side-empty', key: a.id || (a.type + a.path) }, (a.type || 'artifact') + (a.path ? ' \u00b7 ' + a.path : ''))
+              }),
+            ),
+            React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '记忆库'),
+              React.createElement('div', { className: 'dsh-side-empty' }, wiki.exists ? ('共 ' + (wiki.pages || 0) + ' 篇 \u00b7 ' + Object.keys(cats).map(function (k) { return k + ':' + cats[k] }).join(' \u00b7 ')) : '暂无 .memory'),
+            ),
+            mission.blindReview ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '外部盲审 / 校准'),
+              React.createElement('div', { className: 'dsh-side-empty' }, 'avg ' + (mission.blindReview.avg_rating ?? '?') + ' \u00b7 n=' + (mission.blindReview.n_reviews ?? '?') + ' \u00b7 ' + (mission.blindReview.decision || '')),
+            ) : null,
+            mission.finalAudit ? React.createElement('div', { className: 'dsh-side-section' },
+              React.createElement('div', { className: 'dsh-side-label' }, '完成审计'),
+              React.createElement('div', { className: 'dsh-side-empty' }, (mission.finalAudit.passed ? 'PASS' : 'BLOCKED') + (mission.finalAudit.gaps && mission.finalAudit.gaps.length ? ' \u00b7 ' + mission.finalAudit.gaps.join('; ') : '')),
             ) : null,
           )
         }
@@ -322,32 +356,33 @@ window.__ModuleLoader__.load({
             React.createElement('div', { className: 'dsh-mission-line1' },
               React.createElement('div', { className: 'dsh-mission-title' }, mission.title || mission.id),
               React.createElement('span', { className: 'dsh-mission-pill' }, mission.status + ' \u00b7 round ' + (mission.currentRound || 0)),
-              React.createElement('span', { className: 'dsh-mission-pill' }, '\u4efb\u52a1 ' + (mission.counts && mission.counts.total || 0)),
-              React.createElement('span', { className: 'dsh-mission-pill' }, '\u9ed1\u677f ' + artifacts.length),
-              wiki.exists ? React.createElement('span', { className: 'dsh-mission-pill' }, '\u8bb0\u5fc6\u5e93 ' + (wiki.pages || 0)) : null,
+              React.createElement('span', { className: 'dsh-mission-pill' }, '任务 ' + ((mission.counts && mission.counts.total) || 0)),
+              React.createElement('span', { className: 'dsh-mission-pill' }, '黑板 ' + artifacts.length),
+              wiki.exists ? React.createElement('span', { className: 'dsh-mission-pill' }, '记忆库 ' + (wiki.pages || 0)) : null,
             ),
             React.createElement('div', { className: 'dsh-mission-line1' }, statPills),
-            React.createElement('div', { className: 'dsh-legend' }, reviewPills),
           ),
-          React.createElement('div', { className: 'dsh-mission-graph-wrap' },
-            React.createElement('svg', { className: 'dsh-mission-graph', width: layout.width, height: layout.height, viewBox: '0 0 ' + layout.width + ' ' + layout.height },
-              React.createElement('defs', null,
-                React.createElement('marker', {
-                  id: 'dsh-mission-arrow',
-                  markerWidth: 8,
-                  markerHeight: 8,
-                  refX: 7,
-                  refY: 4,
-                  orient: 'auto',
-                  markerUnits: 'strokeWidth',
-                },
-                  React.createElement('path', { d: 'M0,0 L8,4 L0,8 z', fill: 'var(--dsw-alias-border-l2)' }),
+          React.createElement('div', { className: 'dsh-mission-main' },
+            React.createElement('div', { className: 'dsh-mission-canvas' },
+              React.createElement('svg', { viewBox: '0 0 ' + layout.width + ' ' + layout.height, preserveAspectRatio: 'xMidYMid meet' },
+                React.createElement('defs', null,
+                  React.createElement('marker', {
+                    id: 'dsh-mission-arrow',
+                    markerWidth: 8,
+                    markerHeight: 8,
+                    refX: 7,
+                    refY: 4,
+                    orient: 'auto',
+                    markerUnits: 'strokeWidth',
+                  },
+                    React.createElement('path', { d: 'M0,0 L8,4 L0,8 z', fill: 'var(--dsw-alias-border-l2)' }),
+                  ),
                 ),
+                React.createElement('g', null, edges),
+                React.createElement('g', null, nodes),
               ),
-              React.createElement('g', null, edges),
-              React.createElement('g', null, nodes),
             ),
-            tooltip,
+            side,
           ),
         )
       }
