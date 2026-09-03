@@ -57,6 +57,8 @@ export function apply(ctx, config) {
   //   模型首轮长思维链（101K 推理 0 行动是其特征，不是缺陷）。
   const routerMode = config.routerMode === 'spec' ? 'spec' : 'standard'
   const RL_PERSONA = 'You are a helpful software engineer assistant.'
+  const MISSION_TOOL_USAGE =
+    'Long-Run tool usage (once tools expand): before planning use wiki_search for prior methods; before non-trivial implementation write method-card.md (load method-card skill); claim tasks with capabilities and heartbeat long work with mission_heartbeat (mission_release if unable); exchange work via mission_publish_artifact / mission_consume_artifacts; after durable lessons use wiki_write; before final audit use mission_blind_review + wiki_lint. Do not skip these when they apply.'
 
   /** spec 路由模式的首轮工具面（旧行为；weak 也走 default 面）。 */
   function legacyCore(mode) {
@@ -128,7 +130,12 @@ export function apply(ctx, config) {
       // `We / Let's` collective-planning behavior even after tools appear.
       // (Do NOT restore the full assembled sections here — that is what
       // caused the later flip back to `Let me`.)
-      return { ...assembled, sections, contexts: [] }
+      const childSession = agent.session.header?.origin === 'subagent' || (agent.options?.subagentDepth ?? 0) > 0
+      const hasMissionTools = (assembled.tools || []).some((t) => t.name?.startsWith('mission_') || t.name?.startsWith('wiki_'))
+      const finalSections = (!childSession && hasMissionTools)
+        ? [...sections, { name: 'mission-tool-usage', order: 2, text: MISSION_TOOL_USAGE }]
+        : sections
+      return { ...assembled, sections: finalSections, contexts: [] }
     }
 
     const available = new Set(assembled.tools.map((tool) => tool.name))
