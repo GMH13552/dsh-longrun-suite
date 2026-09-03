@@ -512,7 +512,9 @@ Completion is strict:
    verified reusable lessons, pitfalls likely to recur, and what remains
    unsolved. This is the cross-mission handoff. If the mission may recur or
    its structure is reusable, also write a lightweight
-   `mission-cases/case-<mission-id>.md` (see the `lessons` skill).
+   `mission-cases/case-<mission-id>.md` (see the `lessons` skill), and use
+   the `wiki-memory` skill to distill durable methods/pitfalls/decisions into
+   `.memory/`. Run `wiki_lint` before final audit if memory exists.
 7. Call `mission_final_audit` with a `mapping` from every
    `success_criteria` index to an accepted task and evidence paths.
 8. If any criterion is unmapped, or a mapped task is not accepted, or an
