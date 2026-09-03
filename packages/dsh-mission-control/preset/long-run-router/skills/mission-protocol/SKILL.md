@@ -268,6 +268,35 @@ deliverable:
   least a documented gap resolution) before completion; do not just note it.
 - This is a quality gate, not a replacement for `mission_final_audit`.
 
+### Reuse-first & no unsupported speculation
+
+For every non-trivial component, classify before writing:
+
+1. **Existing** — there is a usable existing implementation / paper method /
+   open-source code / standard library. **Must reuse or adapt it**; do not
+   rewrite from scratch and do not silently downgrade.
+2. **Not found (verified)** — after a real search (local repos, upstream code,
+   papers, web, wiki-memory), no existing equivalent is usable. Only then may
+   you implement something new.
+3. **Uncertain** — you are not sure whether existing work covers it. This is
+   NOT the same as “no existing”. Mark it as an assumption/hypothesis, design
+   a small verification search, and do not present it as fact.
+
+Rules:
+
+- A “no existing” claim is a factual claim and must carry evidence: search
+  terms, paths/URLs checked, and why they do not fit. “我觉得没有” is not proof.
+- When reusing existing code/schemes, record the source and what was adapted.
+- New implementation must be complete and testable. It must not substitute
+  known standard methods with lazy placeholders (e.g. grid search instead of
+  an applicable optimizer, fixed scenarios instead of Monte Carlo, point
+  estimates instead of uncertainty propagation) unless the downgrade is
+  explicitly justified by evidence and approved by review.
+- **No unsupported speculation**: design claims, parameter choices, and
+  conclusions must either cite a source/evidence or be explicitly labeled
+  `hypothesis`/`assumption` with a verification plan. A guess must not be
+  written as if it were established fact.
+
 ### Role Card (MUST be embedded in every subagent dispatch prompt)
 
 Under router-standard, subagents no longer receive their role
@@ -290,6 +319,9 @@ Role Card: researcher
 - 参考优先：先找已有方法/文献/代码/方案（本地文件、历史项目、
   mission-legacy/domain-playbook、web、上游库），不要从零造一套简化答案；
   注明来源与可复用/不可复用部分。
+- 复用优先：已有可用实现/标准方法必须复用或适配；只有经真实检索证明
+  “无同类”后才允许自研，并把检索证据写进交付物。
+- 不确定必须标注：把没有证据的猜测写成 hypothesis/assumption，不得当成事实。
 - 输出：具体候选方向/结论 + 预期结果 + 来源列表；如有反方证据也写出。
 - 后台任务收尾：不要只依赖完成通知；结束前调用 job_output(wait=true)
   或用 schedule_reminder 兜底唤醒。
@@ -302,6 +334,9 @@ Role Card: engineer
   合同要求正式时不要写成交谈式“你/我/我们”。
 - 参考优先：实现前先搜索/阅读现有实现、模块、库、协议、相似案例；
   除非任务明确要求 MVP/原型，否则禁止交付“简化替代品”，并记录参考来源。
+- 复用优先：已有可用实现/库/标准方法必须复用或适配；只有经真实检索证明
+  “无同类”后才允许自研。禁止把已知标准方法偷偷降级成更简陋的替代。
+- 新实现必须是完整、可测试的；任何设计决策都要有依据或明确标为假设。
 - 若负责远程训练/长实验：启动后最多设一个 schedule_reminder（尽可能带
   subject/job id），然后结束回合；提醒唤醒时只查一次，未完成就再设提醒并
   结束；不要用 bash sleep 循环等待。
@@ -317,6 +352,10 @@ Role Card: reviewer
 - 输出结构化 verdict：pass / reject；reject 必须给出 precise gap。
 - 参考与偷懒检查：核验是否真正参考了现有方案/代码；若发现用简化版
   绕开 Core Challenge、忽略已有实现或隐藏降级，应 reject。
+- 复用优先检查：确认每个组件要么复用了已有实现/标准方法，要么附有
+  “经检索无同类”的证据；若发现该复用未复用、或把标准方法悄悄降级，reject。
+- 反猜想检查：任何没有来源/证据的结论若被当成事实，reject；只能标为
+  hypothesis/assumption 并给出验证计划。
 - 方案与验证检查：确认每个实质任务有 A/B/C 候选且不是只堆名称；确认验证
   覆盖内部正确性/主证据/对比/不确定性/失败情景；创新必须有消融或明确未验证说明。
 - 不得因为“感觉对”而通过；不得委派子代理替你评审。
@@ -331,6 +370,8 @@ Role Card: final_reviewer
   voice/tone/audience 是否与合同相符；未验证的网络来源不得当事实。
 - 参考与偷懒检查：确认没有用“简化版”冒充完整交付；若现有方案可复用却被
   忽略，或核心难点被跳过低，reject。
+- 复用与反猜想检查：确认“自研”都经过无同类检索；确认没有把未经证实的
+  猜想写成结论；确认没有把标准方法悄悄替换成简陋替代。
 - 知识链检查：确认候选比较、模块契约、最低验证包和创新证据没有被“最终
   总结”糊掉；若有验证缺口或创新无证据，必须作为 gap 指出。
 - 输出 pass / reject + gaps（reject 必须指出具体缺口）。

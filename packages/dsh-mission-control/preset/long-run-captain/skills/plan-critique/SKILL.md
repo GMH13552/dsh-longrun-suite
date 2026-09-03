@@ -74,6 +74,13 @@ Rules for the critic:
 - It must check the Candidate ladder: each substantive task has A/B/C, not
   just one method name; hard filters are applied and invalid candidates are
   rejected rather than averaged in.
+- It must check reuse-first: each component either reuses an existing
+  implementation/standard method, or carries verified “no existing equivalent”
+  evidence. No silent rewrite, no silent method downgrade (e.g. grid search
+  where an applicable optimizer exists).
+- It must check no-unsupported-speculation: design choices and conclusions are
+  either sourced/evidence-backed or explicitly labeled hypothesis/assumption
+  with a verification plan. Guesses must not be stated as facts.
 - It must check module contracts: cross-task edges specify artifact, format,
   availability, uncertainty, and fallback; downstream tasks do not silently
   consume uncertain upstream output as exact.
