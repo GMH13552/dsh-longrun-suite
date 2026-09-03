@@ -221,6 +221,21 @@ calibration_gap
 - 实质交付型 mission（有 accepted 的 research / engineering / deliverable-style 任务或 reportPath）完成前必须有盲审记录；
 - bookkeeping / synthesis / coordination-only 任务豁免。
 
+## UI 可视化
+
+Web 界面会话头部新增「任务」按钮，点击后从右侧弹出一个任务可视化抽屉：
+
+- mission 状态 / 轮次 / 成功标准；
+- open / active / needs_review / accepted / rejected 统计；
+- 可认领队列（等价 `mission_ready`）；
+- 任务图：每个任务的 claim/lease 剩余、scrutinyLevel、review 结果；
+- 黑板产物（artifact blackboard）；
+- 盲审状态与 calibration gap；
+- `.memory` 记忆库页数与分类统计。
+
+浏览器通过 `GET /api/mission-state?sessionId=...&cwd=...` 读取 Host 投影（每 2 秒刷新）。
+动态版插件也可用 Package-private `host.call('mission-state', ...)` 获取同一投影。
+
 ## 工具使用地图（防止模型忽略）
 
 | 阶段 | 必须/建议使用 |
@@ -240,6 +255,7 @@ Host / 插件层
 ├── dsh-mission-control
 │   ├── lib/core.js          # 纯任务状态机（无 DSH 依赖）
 │   ├── lib/index.js         # mission_* / wiki_* / artifact 工具注册
+│   ├── lib/client.js        # Web 任务可视化抽屉（header action + shell.overlay）
 │   ├── bin/mission_check.mjs
 │   └── preset/              # Captain 预设与协议技能
 ├── dsh-timer-scheduler-ui    # 定时唤醒 + 提醒自动取消 + 父会话回退
