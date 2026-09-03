@@ -392,6 +392,13 @@ export function apply(ctx) {
     async execute(args, exec) {
       const cwd = cwdOf(exec)
       const mission = requireMissionId(args, cwd)
+      const submittingTask = mission.tasks[args.task_id]
+      if (submittingTask?.scrutinyLevel === 'high' && (submittingTask.kind === 'research' || submittingTask.kind === 'engineering' || submittingTask.kind === 'deliverable-style')) {
+        const evidenceText = JSON.stringify(args.evidence || []).toLowerCase()
+        if (!evidenceText.includes('method-card')) {
+          throw new Error('high-scrutiny substantive task requires a method-card.md evidence entry before submission')
+        }
+      }
       const { taskId, attemptId } = submitTask(mission, args.task_id, args.evidence, args.result, args.outcome)
       const submittedTask = Object.values(mission.tasks).find((t) => t.id === taskId)
       const latestAttempt = submittedTask?.attempts?.find((a) => a.attemptId === attemptId)

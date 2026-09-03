@@ -124,6 +124,23 @@ During execution:
 - Reject -> `mission_replan` + a new task with `replaces`.
 - Hard choices: `verify_rollout` / `verify_select` / `verify_track`.
 
+## Review tiers (do not over-review)
+
+Tasks carry `scrutinyLevel`: `high`, `standard`, or `low`.
+
+| Level | Typical tasks | Required |
+|---|---|---|
+| `high` | idea/profile, core algorithm/design, final deliverable | method-card + plan-critique + independent reviewer + blind review |
+| `standard` | normal implementation/research/review | method-card if non-trivial + independent reviewer |
+| `low` | docs, formatting, bookkeeping, small fixes, coordination | evidence + Captain/quick check, may reuse an existing reviewer |
+
+- `high` tasks are the key logic: never skip the hard gates.
+- `standard` tasks still need independent review, but do not need blind review.
+- `low` tasks do not need plan-critique or blind review; a quick check by the
+  Captain or a reused reviewer is enough.
+- When spawning reviewers, prefer reusing a reviewer for low tasks and
+  reserving fresh independent reviewers for `high`/`standard`.
+
 ## 5. Result analysis & iterate
 
 - Read `findings`, review, notifications.

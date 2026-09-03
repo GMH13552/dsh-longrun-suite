@@ -127,6 +127,7 @@ export function addTask(mission, task) {
     assignee: task.assignee ? String(task.assignee).trim() : null,
     dependencies: Array.isArray(task.dependencies) ? task.dependencies.map(String) : [],
     capabilities: Array.isArray(task.capabilities) ? task.capabilities.map(String) : [],
+    scrutinyLevel: ['high', 'standard', 'low'].includes(task.scrutinyLevel) ? task.scrutinyLevel : 'standard',
     acceptance: task.acceptance.map(String),
     verificationPlan,
     attempts: [],
@@ -334,8 +335,12 @@ export function reviewTask(mission, taskId, { verdict, reviewer, reportPath, gap
   if (typeof reviewer !== 'string' || reviewer.trim() === '') {
     throw new Error('review requires a reviewer name')
   }
-  if (task.assignee && reviewer === task.assignee) {
+  const lowScrutiny = task.scrutinyLevel === 'low'
+  if (!lowScrutiny && task.assignee && reviewer === task.assignee) {
     throw new Error('self-review is forbidden: reviewer must differ from the task assignee')
+  }
+  if (task.scrutinyLevel !== 'low' && reviewer === 'captain') {
+    throw new Error('standard/high scrutiny tasks require an independent reviewer, not captain quick-check')
   }
   if (verdict === 'reject' && (!gap || String(gap).trim() === '')) {
     throw new Error('reject requires a precise gap describing what blocked acceptance')
@@ -433,10 +438,11 @@ export function completeMission(mission, reportPath) {
     throw new Error('cannot complete mission: final audit has not passed')
   }
   const substantiveKinds = new Set(['research', 'engineering', 'deliverable-style'])
-  const hasSubstantiveDeliverable = Boolean(mission.reportPath) || Object.values(mission.tasks).some(
-    (t) => t && substantiveKinds.has(t.kind) && t.status === 'accepted',
+  const hasHighScrutinyDeliverable = Boolean(mission.reportPath) || Object.values(mission.tasks).some(
+    (t) => t && substantiveKinds.has(t.kind) && t.status === 'accepted' && t.scrutinyLevel === 'high',
   )
-  if (hasSubstantiveDeliverable && !mission.blindReview) {
+  const requiresBlindReview = hasHighScrutinyDeliverable
+  if (requiresBlindReview && !mission.blindReview) {
     throw new Error(
       'cannot complete mission: substantive deliverable missions require a recorded blind review. ' +
       'Call mission_blind_review (with submission_path, avg_rating, n_reviews, decision) before completion. ' +
