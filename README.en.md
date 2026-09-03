@@ -15,8 +15,14 @@ DSH's built-in `goal` / `todo` / `subagent` tools are great for short tasks, but
 3. **Human wake-ups required.** Long experiments are not re-checked automatically.
 4. **Weak completion criteria.** An empty task list is treated as "done" even when the real goal is unverified.
 5. **Subagent overhead.** Durable continuable children are enumerated repeatedly, wasting memory and CPU.
+6. **Single-point summary loss.** A central agent re-stating worker results drops conditions, numbers, and details.
+7. **Primitive worker coordination.** Waiting/chatting leads to duplicated work, double writes, and unclear ownership.
+8. **Lazy/downgraded work.** The model writes simplified replacements, ignores existing implementations, or silently replaces a standard method with a weaker one.
+9. **Experience loss.** Cross-mission lessons are not searchable and old pitfalls repeat.
+10. **Self-assessment inflation.** Producers review their own work without independent/no-memory evaluation.
+11. **Unrecoverable long tasks/reminders.** Reminders are lost, fork cold-start fails, and stale reminders fire repeatedly.
 
-This suite fixes that with file-backed mission state, a tiny generic task lifecycle, data-driven verification plans, independent review, forced replanning on rejection, and timer-based self-wake — **without hardcoding any domain workflow**. Model upgrades, mathematical research, and software projects are all just different `verificationPlan` values.
+This suite fixes that with file-backed mission state, a tiny generic task lifecycle, data-driven verification plans, independent review, forced replanning on rejection, Claim Pool/Lease, Blackboard artifact communication, WorkReceipts, no-memory blind review, LLM Wiki memory, method provenance cards, and timer-based self-wake — **without hardcoding any domain workflow**. Model upgrades, mathematical research, and software projects are all just different `verificationPlan` values.
 
 ## Components
 
