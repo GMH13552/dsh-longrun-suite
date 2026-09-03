@@ -13,6 +13,7 @@
  *   - no domain-specific workflow is hardcoded here
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { join, dirname, isAbsolute, resolve } from 'node:path'
 import {
   createMission,
@@ -102,6 +103,18 @@ function evidencePathExists(cwd, missionId, p) {
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(p)) return true // URL evidence is accepted as a reference
   const abs = isAbsolute(p) ? p : resolve(missionDir(cwd, missionId), p)
   return existsSync(abs)
+}
+
+function evidenceSha256(cwd, missionId, p) {
+  if (!p || typeof p !== 'string') return null
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(p)) return null
+  const abs = isAbsolute(p) ? p : resolve(missionDir(cwd, missionId), p)
+  if (!existsSync(abs)) return null
+  try {
+    return createHash('sha256').update(readFileSync(abs)).digest('hex')
+  } catch {
+    return null
+  }
 }
 
 function verifyFinalAuditEvidence(cwd, mission) {
@@ -320,6 +333,18 @@ export function apply(ctx) {
       const cwd = cwdOf(exec)
       const mission = requireMissionId(args, cwd)
       const { taskId, attemptId } = submitTask(mission, args.task_id, args.evidence, args.result, args.outcome)
+      const submittedTask = mission.tasks.find((t) => t.id === taskId)
+      const latestAttempt = submittedTask?.attempts?.find((a) => a.attemptId === attemptId)
+      if (latestAttempt) {
+        latestAttempt.receipt = {
+          attemptId,
+          at: latestAttempt.at,
+          evidenceHashes: (latestAttempt.evidence || []).map((e) => {
+            const p = typeof e === 'string' ? e : (e && typeof e === 'object' ? e.path : '')
+            return { path: p || null, sha256: p ? evidenceSha256(cwd, mission.id, p) : null }
+          }).filter((x) => x.sha256),
+        }
+      }
       saveMission(cwd, mission)
       return `Submitted ${taskId} (attempt ${attemptId}). It now needs an independent review.`
     },
@@ -355,6 +380,18 @@ export function apply(ctx) {
         reportPath: args.report_path,
         gap: args.gap,
       })
+      const reviewedTask = mission.tasks.find((t) => t.id === args.task_id)
+      if (args.verdict === 'pass' && reviewedTask) {
+        const latestAttempt = reviewedTask.attempts[reviewedTask.attempts.length - 1]
+        reviewedTask.workReceipt = {
+          taskId: args.task_id,
+          attemptId: latestAttempt?.attemptId || null,
+          reviewer: args.reviewer,
+          verdict: 'pass',
+          at: Date.now(),
+          evidenceHashes: latestAttempt?.receipt?.evidenceHashes || [],
+        }
+      }
       saveMission(cwd, mission)
       // Let other host plugins (timer-scheduler) clean up stale reminders for
       // a task that has now settled (accepted or rejected).

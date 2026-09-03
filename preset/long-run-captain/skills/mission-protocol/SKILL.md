@@ -233,6 +233,41 @@ For any long-running remote job (training, eval, upload, experiment):
 - If a job needs a human-level decision or is taking longer than reasonable,
   stop and report the situation instead of loop-waiting indefinitely.
 
+### Persistent worker pool & claim discipline (swarm-style)
+
+- Prefer reusable role workers: after spawning a researcher/engineer, keep the
+  same continuable subagent and use `send_message` for follow-ups. Do not spawn
+  a new agent per task when an existing idle worker is relevant.
+- In a mission DAG, multiple ready tasks may be claimed by different workers
+  concurrently. Merge results programmatically by task id / evidence paths; the
+  Captain should not retell or rewrite worker outputs into a single summary
+  unless synthesis is the actual task.
+- If a worker dies, the task remains in mission state and can be claimed or
+  retried; a failed worker output must not be silently replaced by the Captain
+  doing the work.
+- Lease-like hygiene: a long worker should claim -> set reminder -> end turn;
+  if it keeps running, heartbeat by updating task status or a schedule_reminder;
+  if it disappears, replan instead of waiting forever.
+- Same-shaped batches may fan out to parallel workers. Heterogeneous independent
+  DAG tasks may be claimed by multiple workers concurrently, but dependencies
+  remain gated by accepted tasks.
+
+### Blind review / calibration gate (before final audit)
+
+Before `mission_final_audit`, run at least one no-memory blind review on the
+deliverable:
+
+- Spawn an independent reviewer (or use `subagent_final_reviewer`) with ONLY
+  the deliverable artifact paths and success criteria. Do NOT include mission
+  history, internal self-assessments, task summaries, or prior critic verdicts.
+- Before that, record the producer/Captain's own claimed rating (1-10).
+- The blind reviewer returns `avg_rating`, `n_reviews`,
+  `decision` (`accept` / `borderline` / `reject`), and `top_weaknesses`.
+- Compute `calibration_gap = self_claimed_rating - avg_external_rating`.
+- If `decision=reject` or `calibration_gap >= 2.0`, add a revision task (or at
+  least a documented gap resolution) before completion; do not just note it.
+- This is a quality gate, not a replacement for `mission_final_audit`.
+
 ### Role Card (MUST be embedded in every subagent dispatch prompt)
 
 Under router-standard, subagents no longer receive their role
