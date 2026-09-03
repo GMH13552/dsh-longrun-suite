@@ -393,7 +393,7 @@ export function apply(ctx) {
       const cwd = cwdOf(exec)
       const mission = requireMissionId(args, cwd)
       const { taskId, attemptId } = submitTask(mission, args.task_id, args.evidence, args.result, args.outcome)
-      const submittedTask = mission.tasks.find((t) => t.id === taskId)
+      const submittedTask = Object.values(mission.tasks).find((t) => t.id === taskId)
       const latestAttempt = submittedTask?.attempts?.find((a) => a.attemptId === attemptId)
       if (latestAttempt) {
         latestAttempt.receipt = {
@@ -440,7 +440,7 @@ export function apply(ctx) {
         reportPath: args.report_path,
         gap: args.gap,
       })
-      const reviewedTask = mission.tasks.find((t) => t.id === args.task_id)
+      const reviewedTask = Object.values(mission.tasks).find((t) => t.id === args.task_id)
       if (args.verdict === 'pass' && reviewedTask) {
         const latestAttempt = reviewedTask.attempts[reviewedTask.attempts.length - 1]
         reviewedTask.workReceipt = {
