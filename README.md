@@ -228,9 +228,10 @@ Web 界面的 `conversation.view` 视图环新增一个「任务」标签页，�
 - mission 状态 / 轮次 / 成功标准；
 - open / active / needs_review / accepted / rejected 统计；
 - 可认领队列（等价 `mission_ready`）；
-- 任务图：每个任务的 claim/lease 剩余、scrutinyLevel、review 结果；
+- 任务图：每个任务的 claim/lease 剩余、scrutinyLevel、review 结果（区分“任务级评审”和“最终评审”）；
+- 评审层级：任务级评审（单个交付物）与最终评审（mission 交付前独立终审）分开显示；
 - 黑板产物（artifact blackboard）；
-- 盲审状态与 calibration gap；
+- 外部盲审 / 校准状态与 calibration gap；
 - `.memory` 记忆库页数与分类统计。
 
 浏览器通过 `GET /api/mission-state?sessionId=...&cwd=...` 读取 Host 投影（每 2 秒刷新）。

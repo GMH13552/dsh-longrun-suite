@@ -75,6 +75,11 @@ window.__ModuleLoader__.load({
       if (s === 'rejected') return 'dsh-mission-chip-rejected'
       return ''
     }
+    function roleLabel(assignee) {
+      if (assignee === 'final_reviewer') return '最终评审'
+      if (assignee === 'reviewer') return '任务评审'
+      return assignee
+    }
 
     exports.inject = ['slots', 'timer', 'sessions']
 
@@ -158,6 +163,17 @@ window.__ModuleLoader__.load({
           )
         }))
 
+        var hasTaskReview = (mission.tasks || []).some(function (t) { return t.assignee === 'reviewer' || (t.kind === 'review' && t.assignee !== 'final_reviewer') })
+        var hasFinalReview = (mission.tasks || []).some(function (t) { return t.assignee === 'final_reviewer' })
+        var reviewLayers = []
+        if (hasTaskReview) reviewLayers.push(React.createElement(Chip, { key: 'task-review' }, '任务级评审'))
+        if (hasFinalReview) reviewLayers.push(React.createElement(Chip, { key: 'final-review', className: 'dsh-mission-chip-needs_review' }, '最终评审'))
+        var reviewSection = React.createElement('div', { className: 'dsh-mission-section' },
+          React.createElement('div', { className: 'dsh-mission-section-title' }, '评审层级'),
+          React.createElement('div', { className: 'dsh-mission-task-meta' }, reviewLayers.length ? reviewLayers : React.createElement('div', { className: 'dsh-mission-sub' }, '本 mission 暂无独立评审任务')),
+          React.createElement('div', { className: 'dsh-mission-sub' }, '任务级评审负责单个交付物；最终评审负责整个 mission 交付前的独立终审。'),
+        )
+
         var readyTasks = (mission.ready || []).map(function (id) {
           return (mission.tasks || []).find(function (t) { return t.id === id })
         }).filter(Boolean)
@@ -183,7 +199,11 @@ window.__ModuleLoader__.load({
             chips.push(React.createElement(Chip, { className: leaseCls, key: 'claim' }, t.claim.worker + ' ' + fmtRemain(t.claim.leaseRemainingMs)))
           }
           if (t.leaseBlocked) chips.push(React.createElement(Chip, { className: 'dsh-mission-chip-blocked', key: 'blocked' }, '\u5df2\u5c01\u9501'))
-          if (t.review) chips.push(React.createElement(Chip, { className: t.review.verdict === 'pass' ? 'dsh-mission-chip-accepted' : 'dsh-mission-chip-rejected', key: 'review' }, t.review.verdict + ' by ' + (t.review.reviewer || '?')))
+          if (t.review) {
+            var reviewRole = t.assignee === 'final_reviewer' ? '最终评审' : (t.assignee === 'reviewer' || t.kind === 'review') ? '任务评审' : '评审'
+            var verdictText = t.review.verdict === 'pass' ? '通过' : t.review.verdict === 'reject' ? '拒绝' : String(t.review.verdict || '')
+            chips.push(React.createElement(Chip, { className: t.review.verdict === 'pass' ? 'dsh-mission-chip-accepted' : 'dsh-mission-chip-rejected', key: 'review' }, reviewRole + verdictText + ' · ' + (t.review.reviewer || '?')))
+          }
           return React.createElement('div', {
             className: 'dsh-mission-task',
             style: { borderLeftColor: t.status === 'accepted' ? 'var(--dsw-alias-state-success-primary)' : t.status === 'rejected' ? 'var(--dsw-alias-state-error-primary)' : t.status === 'needs_review' ? 'var(--dsw-alias-state-warn-primary)' : t.status === 'active' ? 'var(--dsw-alias-brand-primary)' : 'var(--dsw-alias-border-l2)' },
@@ -191,7 +211,7 @@ window.__ModuleLoader__.load({
           },
             React.createElement('div', { className: 'dsh-mission-task-title' }, t.id + ' \u00b7 ' + t.title),
             React.createElement('div', { className: 'dsh-mission-task-meta' }, chips),
-            React.createElement('div', { className: 'dsh-mission-sub' }, (t.dependencies && t.dependencies.length ? 'dep: ' + t.dependencies.join(', ') : 'no deps') + (t.assignee ? ' \u00b7 ' + t.assignee : '')),
+            React.createElement('div', { className: 'dsh-mission-sub' }, (t.dependencies && t.dependencies.length ? 'dep: ' + t.dependencies.join(', ') : 'no deps') + (t.assignee ? ' · ' + roleLabel(t.assignee) : '')),
           )
         }))
 
@@ -209,7 +229,7 @@ window.__ModuleLoader__.load({
         if (mission.blindReview) {
           var br = mission.blindReview
           blindCard = React.createElement('div', { className: 'dsh-mission-section' },
-            React.createElement('div', { className: 'dsh-mission-section-title' }, '\u76f2\u5ba1'),
+            React.createElement('div', { className: 'dsh-mission-section-title' }, '外部盲审 / 校准'),
             React.createElement('div', { className: 'dsh-mission-task' },
               React.createElement('div', { className: 'dsh-mission-task-meta' },
                 React.createElement(Chip, { className: br.decision === 'accept' ? 'dsh-mission-chip-accepted' : br.decision === 'reject' ? 'dsh-mission-chip-rejected' : 'dsh-mission-chip-needs_review' }, String(br.decision || '?')),
@@ -233,11 +253,12 @@ window.__ModuleLoader__.load({
             React.createElement('div', { className: 'dsh-mission-sub' }, '\u6210\u529f\u6807\u51c6 ' + (mission.successCriteria || []).length + ' \u6761 \u00b7 \u4efb\u52a1 ' + ((mission.counts && mission.counts.total) || 0) + ' \u9879'),
           ),
           React.createElement('div', { className: 'dsh-mission-section' },
-            React.createElement('div', { className: 'dsh-mission-section-title' }, '\u72b6\u6001'),
+            React.createElement('div', { className: 'dsh-mission-section-title' }, '状态'),
             stats,
           ),
+          reviewSection,
           React.createElement('div', { className: 'dsh-mission-section' },
-            React.createElement('div', { className: 'dsh-mission-section-title' }, '\u53ef\u8ba4\u9886\u961f\u5217'),
+            React.createElement('div', { className: 'dsh-mission-section-title' }, '可认领队列'),
             readyList,
           ),
           React.createElement('div', { className: 'dsh-mission-section' },
@@ -253,7 +274,7 @@ window.__ModuleLoader__.load({
             React.createElement('div', { className: 'dsh-mission-section-title' }, '\u8bb0\u5fc6\u5e93'),
             React.createElement('div', { className: 'dsh-mission-wiki' }, wiki.exists ? ('\u5171 ' + (wiki.pages || 0) + ' \u7bc7 \u00b7 ' + catText) : '\u6682\u65e0 .memory'),
           ),
-          mission.finalAudit ? React.createElement('div', { className: 'dsh-mission-section' }, React.createElement('div', { className: 'dsh-mission-section-title' }, '\u6700\u7ec8\u5ba1\u8ba1'), React.createElement('div', { className: 'dsh-mission-sub' }, (mission.finalAudit.passed ? 'PASS' : 'BLOCKED') + (mission.finalAudit.gaps && mission.finalAudit.gaps.length ? ' \u00b7 ' + mission.finalAudit.gaps.join('; ') : ''))) : null,
+          mission.finalAudit ? React.createElement('div', { className: 'dsh-mission-section' }, React.createElement('div', { className: 'dsh-mission-section-title' }, '完成审计（成功标准映射）'), React.createElement('div', { className: 'dsh-mission-sub' }, (mission.finalAudit.passed ? 'PASS' : 'BLOCKED') + (mission.finalAudit.gaps && mission.finalAudit.gaps.length ? ' \u00b7 ' + mission.finalAudit.gaps.join('; ') : ''))) : null,
         )
       }
 
