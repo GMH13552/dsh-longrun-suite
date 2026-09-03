@@ -15,10 +15,12 @@ lint checklist. No vector DB, no service, no heavy engine.
 ```text
 .memory/
 ├── _schema.md
+├── _capabilities.md       # 本 workspace 的能力词表（worker 简历词汇）
 ├── methods/
 ├── pitfalls/
 ├── decisions/
-└── missions/
+├── missions/
+└── workers/               # worker 简历：角色、能力、擅长、历史
 ```
 
 One page = one coherent topic. Pages cross-link with `[[slug]]` markers.
@@ -67,6 +69,56 @@ Each page has:
 - `summary` — one-liner shown in the index (required)
 - `content` — markdown body
 - `tags` — one `domain:<x>` plus optional free tags
+
+## Capability vocabulary
+
+Each workspace should keep a local vocabulary in `.memory/_capabilities.md`.
+Capability matching is tag matching; the words are up to the workspace.
+
+```markdown
+# Capability Vocabulary
+
+## 研究类
+- web-search
+- source-verify
+- literature
+
+## 工程类
+- python
+- pytorch
+- cuda
+- remote-gpu
+- typescript
+- react
+
+## 评审类
+- independent-review
+- evidence-check
+- blind-review
+
+## 别名
+- python3 == python
+- gpu == cuda
+```
+
+The framework only checks set membership, so these are not hardcoded anywhere.
+Keep aliases here so tasks and worker resumes can use a stable local spelling.
+
+## Worker resumes
+
+Each worker may have `.memory/workers/<worker-id>.md`, like a resume:
+
+```markdown
+# Worker: <id>
+- role: researcher | engineer | reviewer | final_reviewer
+- capabilities: [web-search, source-verify, literature]
+- skills: ...
+- history: <short summary of what it has done / weaknesses>
+- notes: ...
+```
+
+The mission may pass these capabilities at `mission_claim` time. Only workers
+whose capabilities cover the task may claim it.
 ```
 
 ## `wiki_write` contract

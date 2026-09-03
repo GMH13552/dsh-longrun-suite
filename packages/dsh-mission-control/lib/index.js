@@ -627,7 +627,7 @@ export function apply(ctx) {
 
   function ensureMemory(cwd) {
     const root = memoryRoot(cwd)
-    for (const dir of ['', 'methods', 'pitfalls', 'decisions', 'missions']) {
+    for (const dir of ['', 'methods', 'pitfalls', 'decisions', 'missions', 'workers']) {
       mkdirSync(join(root, dir), { recursive: true })
     }
   }
@@ -657,7 +657,7 @@ export function apply(ctx) {
         summary: { type: 'string', description: 'One-line summary shown in index.' },
         content: { type: 'string', description: 'Markdown body with [[slug]] cross-links.' },
         tags: { type: 'array', items: { type: 'string' }, description: 'Tags; include one domain:<x> when non-daily.' },
-        category: { type: 'string', enum: ['methods', 'pitfalls', 'decisions', 'missions'], description: 'Optional subdirectory. Defaults to methods if domain tag contains method, else root.' },
+        category: { type: 'string', enum: ['methods', 'pitfalls', 'decisions', 'missions', 'workers', '_capabilities'], description: 'Optional category. _capabilities writes root .memory/_capabilities.md; workers writes .memory/workers/. Defaults to methods.' },
         mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
       },
       required: ['title', 'content', 'summary'],
@@ -668,8 +668,10 @@ export function apply(ctx) {
       const cwd = cwdOf(exec)
       ensureMemory(cwd)
       const slug = slugify(args.title)
-      const category = args.category && ['methods','pitfalls','decisions','missions'].includes(args.category) ? args.category : 'methods'
-      const file = join(memoryRoot(cwd), category, `${slug}.md`)
+      const category = args.category && ['methods','pitfalls','decisions','missions','workers'].includes(args.category) ? args.category : 'methods'
+      const file = category === '_capabilities'
+        ? join(memoryRoot(cwd), '_capabilities.md')
+        : join(memoryRoot(cwd), category, `${slug}.md`)
       const tags = (args.tags || []).map(String)
       const body = `# ${args.title}\n\n- summary: ${args.summary}\n- tags: ${tags.join(', ')}\n\n${args.content}\n`
       writeFileSync(file, body, 'utf8')
@@ -731,6 +733,12 @@ export function apply(ctx) {
       const files = listMdFiles(root)
       const max = Math.max(1, Math.min(100, Number(args.maxResults) || 20))
       const findings = []
+      const capsFile = join(root, '_capabilities.md')
+      if (!existsSync(capsFile)) findings.push('missing-capability-vocabulary: .memory/_capabilities.md')
+      for (const file of files.filter((f) => f.includes('/workers/'))) {
+        const text = readFileSync(file, 'utf8')
+        if (!/capabilities:/i.test(text)) findings.push(`missing-worker-capabilities: ${file}`)
+      }
       const slugs = new Set(files.map((f) => f.replace(root + '/', '')))
       for (const file of files) {
         const text = readFileSync(file, 'utf8')
