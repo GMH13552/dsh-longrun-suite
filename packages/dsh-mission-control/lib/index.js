@@ -865,4 +865,125 @@ export function apply(ctx) {
       return findings.length ? findings.slice(0, max).join('\n') : 'wiki_lint: clean'
     },
   })
+
+  // ── browser mission state route ───────────────────────────────────────────
+  function missionUiSnapshot(cwd, mission) {
+    const now = Date.now()
+    const counts = { open: 0, active: 0, needs_review: 0, accepted: 0, rejected: 0, total: 0 }
+    const tasks = []
+    const ready = []
+    for (const task of Object.values(mission.tasks || {})) {
+      if (!task) continue
+      counts.total += 1
+      if (counts[task.status] !== undefined) counts[task.status] += 1
+      const depsOk = (task.dependencies || []).every((d) => mission.tasks[d]?.status === 'accepted')
+      const isReady = task.status === 'open' && !task.leaseBlocked && depsOk
+      if (isReady) ready.push(task.id)
+      tasks.push({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        kind: task.kind,
+        assignee: task.assignee,
+        dependencies: task.dependencies || [],
+        capabilities: task.capabilities || [],
+        scrutinyLevel: task.scrutinyLevel || 'standard',
+        claim: task.claimedBy ? {
+          worker: task.claimedBy,
+          claimedAt: task.claimedAt,
+          leaseExpiresAt: task.leaseExpiresAt,
+          leaseRemainingMs: typeof task.leaseExpiresAt === 'number' ? Math.max(0, task.leaseExpiresAt - now) : null,
+        } : null,
+        claimAttempts: task.claimAttempts || 0,
+        leaseBlocked: Boolean(task.leaseBlocked),
+        blockedReason: task.blockedReason || null,
+        review: task.review ? { verdict: task.review.verdict, reviewer: task.review.reviewer, gap: task.review.gap } : null,
+        outcome: task.outcome || null,
+        replaces: task.replaces || null,
+        supersededBy: task.supersededBy || null,
+        requiredEvidence: Array.isArray(task.verificationPlan?.requiredEvidence) ? task.verificationPlan.requiredEvidence : [],
+      })
+    }
+    function wikiStats() {
+      const root = memoryRoot(cwd)
+      if (!existsSync(root)) return { exists: false, pages: 0, categories: {} }
+      const categories = {}
+      for (const name of readdirSync(root)) {
+        const full = join(root, name)
+        let st
+        try { st = statSync(full) } catch { continue }
+        if (st.isDirectory()) categories[name] = listMdFiles(full).length
+        else if (name.endsWith('.md')) categories._root = (categories._root || 0) + 1
+      }
+      return { exists: true, pages: Object.values(categories).reduce((a, b) => a + b, 0), categories }
+    }
+    return {
+      id: mission.id,
+      title: mission.title,
+      status: mission.status,
+      goals: mission.goals || [],
+      successCriteria: mission.successCriteria || [],
+      createdAt: mission.createdAt,
+      updatedAt: mission.updatedAt,
+      completedAt: mission.completedAt || null,
+      currentRound: mission.currentRound || 0,
+      budget: mission.budget || null,
+      counts,
+      ready,
+      tasks,
+      artifacts: Array.isArray(mission.artifacts) ? mission.artifacts : [],
+      blindReview: mission.blindReview || null,
+      finalAudit: mission.finalAudit ? {
+        passed: Boolean(mission.finalAudit.passed),
+        gaps: mission.finalAudit.gaps || [],
+        at: mission.finalAudit.at || null,
+        mappingCount: Array.isArray(mission.finalAudit.mapping) ? mission.finalAudit.mapping.length : 0,
+      } : null,
+      wiki: wikiStats(),
+    }
+  }
+
+  ctx.inject(['webServer'], (httpCtx) => {
+    const dispose = httpCtx.webServer.register({
+      kind: 'exact',
+      path: '/api/mission-state',
+      handler: (req, res) => {
+        try {
+          const url = new URL(req.url ?? '/', 'http://localhost')
+          const sessionId = url.searchParams.get('sessionId') ?? ''
+          const cwdParam = url.searchParams.get('cwd') ?? ''
+          const missionIdParam = url.searchParams.get('missionId') ?? ''
+          let cwd = cwdParam
+          if (cwd === '') {
+            const agents = ctx.get('agents')
+            const agent = agents && typeof agents.get === 'function' ? agents.get(sessionId) : undefined
+            cwd = agent?.session?.header?.cwd ?? ''
+          }
+          if (cwd === '') {
+            res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
+            res.end(JSON.stringify({ mission: null, error: 'no session cwd available; pass cwd query' }))
+            return
+          }
+          const latest = latestFile(cwd)
+          if (!existsSync(latest)) {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
+            res.end(JSON.stringify({ mission: null, cwd }))
+            return
+          }
+          const { missionId } = readJson(latest)
+          const mission = missionIdParam ? loadMission(cwd, missionIdParam) : loadMission(cwd, missionId)
+          res.writeHead(200, {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'no-store',
+          })
+          res.end(JSON.stringify({ mission: missionUiSnapshot(cwd, mission), cwd }))
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ mission: null, error: String((err && err.message) || err) }))
+        }
+      },
+    })
+    httpCtx.effect(() => dispose, 'dsh-mission-control: state route')
+  })
 }
+
