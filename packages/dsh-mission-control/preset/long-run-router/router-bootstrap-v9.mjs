@@ -103,7 +103,7 @@ export function apply(ctx, config) {
           { name: 'router-persona', text: persona, order: 0 },
         ]
       } else {
-        const missionNote = { name: 'mission-note', order: 1, text: 'Long-running or complex multi-step tasks: FIRST call the `skill` tool for mission-protocol and task-profile, then call mission_start and write task-profile.md before substantive research/solving. Do not look for skill files on disk; use the skill tool. Delegate substantive work to role subagents. After dispatching background subagents, prefer setting a schedule_reminder and ending the turn over repeated waiting.' }
+        const missionNote = { name: 'mission-note', order: 1, text: 'Long-running or complex multi-step tasks: BEFORE any bash exploration or implementation, FIRST call the `skill` tool for hard-task-flow, mission-protocol and task-profile, then call mission_start and write task-profile.md. Do not look for skill files on disk; use the skill tool. Follow the hard-task-flow loop: wiki_search -> profile/plan -> method-card -> mission_start/add_tasks/claim -> artifacts -> submit/review/replan -> blind-review -> final audit. Delegate substantive work to role subagents. After dispatching background subagents, prefer setting a schedule_reminder and ending the turn over repeated waiting.' }
         sections = planSection
           ? [planSection, { name: 'router-persona', text: persona, order: 0 }, missionNote]
           : [{ name: 'router-persona', text: persona, order: 0 }, missionNote]
