@@ -432,6 +432,17 @@ export function completeMission(mission, reportPath) {
   if (!mission.finalAudit || !mission.finalAudit.passed) {
     throw new Error('cannot complete mission: final audit has not passed')
   }
+  const substantiveKinds = new Set(['research', 'engineering', 'deliverable-style'])
+  const hasSubstantiveDeliverable = Boolean(mission.reportPath) || Object.values(mission.tasks).some(
+    (t) => t && substantiveKinds.has(t.kind) && t.status === 'accepted',
+  )
+  if (hasSubstantiveDeliverable && !mission.blindReview) {
+    throw new Error(
+      'cannot complete mission: substantive deliverable missions require a recorded blind review. ' +
+      'Call mission_blind_review (with submission_path, avg_rating, n_reviews, decision) before completion. ' +
+      'If this mission is genuinely not a substantive deliverable, avoid marking research/engineering/deliverable-style tasks accepted or set reportPath.',
+    )
+  }
   const unresolved = rejectedWithoutFollowUp(mission)
   if (unresolved.length > 0) {
     throw new Error(

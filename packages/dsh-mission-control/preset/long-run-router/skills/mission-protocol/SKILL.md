@@ -266,6 +266,9 @@ deliverable:
 - Compute `calibration_gap = self_claimed_rating - avg_external_rating`.
 - If `decision=reject` or `calibration_gap >= 2.0`, add a revision task (or at
   least a documented gap resolution) before completion; do not just note it.
+- This is a **hard gate** only for missions with accepted
+  `research` / `engineering` / `deliverable-style` tasks or a final report
+  path. Bookkeeping / synthesis / coordination-only missions are exempt.
 - This is a quality gate, not a replacement for `mission_final_audit`.
 
 ### Reuse-first & no unsupported speculation
