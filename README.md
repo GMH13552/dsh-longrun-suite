@@ -223,7 +223,7 @@ calibration_gap
 
 ## UI 可视化
 
-Web 界面会话头部新增「任务」按钮，点击后从右侧弹出一个任务可视化抽屉：
+Web 界面的 `conversation.view` 视图环新增一个「任务」标签页，放在「对话」与「轨迹」之间：
 
 - mission 状态 / 轮次 / 成功标准；
 - open / active / needs_review / accepted / rejected 统计；
@@ -255,7 +255,7 @@ Host / 插件层
 ├── dsh-mission-control
 │   ├── lib/core.js          # 纯任务状态机（无 DSH 依赖）
 │   ├── lib/index.js         # mission_* / wiki_* / artifact 工具注册
-│   ├── lib/client.js        # Web 任务可视化抽屉（header action + shell.overlay）
+│   ├── lib/client.js        # Web 任务可视化视图标签页（conversation.view「任务」）
 │   ├── bin/mission_check.mjs
 │   └── preset/              # Captain 预设与协议技能
 ├── dsh-timer-scheduler-ui    # 定时唤醒 + 提醒自动取消 + 父会话回退
