@@ -228,11 +228,10 @@ Web 界面的 `conversation.view` 视图环新增一个「任务」标签页，�
 - mission 状态 / 轮次 / 成功标准；
 - open / active / needs_review / accepted / rejected 统计；
 - 可认领队列（等价 `mission_ready`）；
-- 任务图：每个任务的 claim/lease 剩余、scrutinyLevel、review 结果（区分“任务级评审”和“最终评审”）；
+- 任务 DAG 节点图：按依赖自动分层，节点用状态色区分，悬停节点显示任务详情（验收标准、依赖、评审结果、租期、必交证据）；
 - 评审层级：任务级评审（单个交付物）与最终评审（mission 交付前独立终审）分开显示；
-- 黑板产物（artifact blackboard）；
-- 外部盲审 / 校准状态与 calibration gap；
-- `.memory` 记忆库页数与分类统计。
+- 顶部状态胶囊：任务计数、黑板产物数、记忆库页数；
+- 外部盲审 / 校准状态（存在时）。
 
 浏览器通过 `GET /api/mission-state?sessionId=...&cwd=...` 读取 Host 投影（每 2 秒刷新）。
 动态版插件也可用 Package-private `host.call('mission-state', ...)` 获取同一投影。
