@@ -22,6 +22,9 @@ export const TASK_STATUSES = ['open', 'active', 'needs_review', 'accepted', 'rej
  * every other kind must be assigned to a role subagent. */
 export const TASK_KINDS = ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination']
 
+export const MAX_CLAIM_ATTEMPTS = 3
+export const DEFAULT_LEASE_SECONDS = 7200
+
 export function isCaptainAllowedKind(kind) {
   return kind === 'synthesis' || kind === 'bookkeeping' || kind === 'coordination'
 }
@@ -123,11 +126,18 @@ export function addTask(mission, task) {
     kind: task.kind || null,
     assignee: task.assignee ? String(task.assignee).trim() : null,
     dependencies: Array.isArray(task.dependencies) ? task.dependencies.map(String) : [],
+    capabilities: Array.isArray(task.capabilities) ? task.capabilities.map(String) : [],
     acceptance: task.acceptance.map(String),
     verificationPlan,
     attempts: [],
     review: null,
     replaces: task.replaces || null,
+    claimedBy: null,
+    claimedAt: null,
+    leaseExpiresAt: null,
+    claimAttempts: 0,
+    leaseBlocked: false,
+    blockedReason: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
@@ -186,8 +196,47 @@ export function updateTask(mission, taskId, patch) {
   return task
 }
 
-export function claimTask(mission, taskId, assignee) {
+export function reclaimExpiredLeases(mission) {
+  const now = Date.now()
+  const reclaimed = []
+  for (const task of Object.values(mission.tasks)) {
+    if (task.status !== 'active' || !task.claimedBy || !task.leaseExpiresAt) continue
+    if (task.leaseExpiresAt > now) continue
+    const lost = task.claimedBy
+    task.claimedBy = null
+    task.claimAttempts = Number(task.claimAttempts || 0) + 1
+    task.leaseExpiresAt = null
+    task.claimedAt = null
+    if (task.claimAttempts >= MAX_CLAIM_ATTEMPTS) {
+      task.leaseBlocked = true
+      task.blockedReason = `reclaimed_${task.claimAttempts}_times_last_worker=${lost}`
+      task.status = 'open'
+      journal(mission, 'task-blocked', `${task.id} reason=${task.blockedReason}`)
+    } else {
+      task.status = 'open'
+      journal(mission, 'task-reclaimed', `${task.id} lost_worker=${lost} attempts=${task.claimAttempts}`)
+    }
+    reclaimed.push(task.id)
+  }
+  return reclaimed
+}
+
+function capabilityGap(task, workerCapabilities) {
+  const caps = Array.isArray(task.capabilities) ? task.capabilities : []
+  if (caps.length === 0) return null
+  const have = new Set(Array.isArray(workerCapabilities) ? workerCapabilities : [])
+  const missing = caps.filter((c) => !have.has(c))
+  return missing.length > 0 ? missing : null
+}
+
+export function claimTask(mission, taskId, assignee, options = {}) {
+  const worker = options.worker || assignee || 'captain'
+  const leaseSeconds = Number.isFinite(options.leaseSeconds) ? options.leaseSeconds : DEFAULT_LEASE_SECONDS
+  reclaimExpiredLeases(mission)
   const task = requireTask(mission, taskId)
+  if (task.leaseBlocked) {
+    throw new Error(`task ${taskId} is lease-blocked: ${task.blockedReason || 'too many reclaims'}`)
+  }
   if (task.status !== 'open') {
     throw new Error(`task ${taskId} cannot be claimed from status ${task.status}`)
   }
@@ -202,13 +251,49 @@ export function claimTask(mission, taskId, assignee) {
   if (task.kind && !isCaptainAllowedKind(task.kind) && finalAssignee === 'captain') {
     throw new Error(`task ${taskId} kind "${task.kind}" cannot be claimed by captain; use a role subagent`)
   }
+  const gap = capabilityGap(task, options.capabilities)
+  if (gap) {
+    throw new Error(`task ${taskId} requires capabilities [${gap.join(', ')}]; worker lacks them`)
+  }
+  const now = Date.now()
   task.status = 'active'
   task.assignee = finalAssignee
-  task.updatedAt = Date.now()
-  mission.updatedAt = Date.now()
-  journal(mission, 'task-claimed', `${taskId} -> ${task.assignee}`)
+  task.claimedBy = worker
+  task.claimedAt = now
+  task.leaseExpiresAt = now + leaseSeconds * 1000
+  task.claimAttempts = Number(task.claimAttempts || 0) + 1
+  task.updatedAt = now
+  mission.updatedAt = now
+  journal(mission, 'task-claimed', `${taskId} -> ${worker} lease=${leaseSeconds}s attempt=${task.claimAttempts}`)
   return task
 }
+
+export function heartbeatTask(mission, taskId, worker, leaseSeconds = DEFAULT_LEASE_SECONDS) {
+  const task = requireTask(mission, taskId)
+  if (task.status !== 'active') throw new Error(`task ${taskId} can only be heartbeated while active (current: ${task.status})`)
+  if (task.claimedBy !== worker) throw new Error(`task ${taskId} claim lost: holder is ${task.claimedBy}`)
+  const now = Date.now()
+  task.leaseExpiresAt = now + leaseSeconds * 1000
+  task.updatedAt = now
+  mission.updatedAt = now
+  journal(mission, 'task-heartbeat', `${taskId} worker=${worker}`)
+  return task
+}
+
+export function releaseTask(mission, taskId, worker) {
+  const task = requireTask(mission, taskId)
+  if (task.status !== 'active') throw new Error(`task ${taskId} can only be released while active (current: ${task.status})`)
+  if (task.claimedBy !== worker) throw new Error(`task ${taskId} claim lost: holder is ${task.claimedBy}`)
+  task.status = 'open'
+  task.claimedBy = null
+  task.leaseExpiresAt = null
+  task.claimedAt = null
+  task.updatedAt = Date.now()
+  mission.updatedAt = Date.now()
+  journal(mission, 'task-released', `${taskId} worker=${worker}`)
+  return task
+}
+
 
 export function submitTask(mission, taskId, evidence, result, outcome) {
   const task = requireTask(mission, taskId)

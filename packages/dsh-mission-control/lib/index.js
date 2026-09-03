@@ -12,7 +12,7 @@
  *   - every task carries its own acceptance + verificationPlan
  *   - no domain-specific workflow is hardcoded here
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { join, dirname, isAbsolute, resolve } from 'node:path'
 import {
@@ -28,6 +28,9 @@ import {
   completeMission,
   checkMission,
   statusText,
+  heartbeatTask,
+  releaseTask,
+  DEFAULT_LEASE_SECONDS,
 } from './core.js'
 
 export const name = 'dsh-mission-control'
@@ -291,12 +294,15 @@ export function apply(ctx) {
   // ── mission_claim ─────────────────────────────────────────────────────────
   ctx.tools.register({
     name: 'mission_claim',
-    description: 'Claim a task before working on it. Dependencies must already be accepted.',
+    description: 'Claim a task before working on it. Dependencies must already be accepted. Supports worker lease, capability matching, heartbeat, and release via mission_heartbeat / mission_release.',
     parameters: {
       type: 'object',
       properties: {
         task_id: { type: 'string', description: 'Task id.' },
         assignee: { type: 'string', description: 'Who is doing the work (defaults to "captain").' },
+        worker: { type: 'string', description: 'Optional worker id; defaults to assignee. Used for lease ownership.' },
+        capabilities: { type: 'array', items: { type: 'string' }, description: 'Worker capabilities; must cover task.capabilities when set.' },
+        lease_seconds: { type: 'number', description: 'Lease duration in seconds; default 7200.' },
         mission_id: { type: 'string', description: 'Optional mission id. Defaults to the latest mission.' },
       },
       required: ['task_id'],
@@ -306,9 +312,63 @@ export function apply(ctx) {
     async execute(args, exec) {
       const cwd = cwdOf(exec)
       const mission = requireMissionId(args, cwd)
-      claimTask(mission, args.task_id, args.assignee)
+      const leaseSeconds = Number.isFinite(args.lease_seconds) ? args.lease_seconds : DEFAULT_LEASE_SECONDS
+      const task = claimTask(mission, args.task_id, args.assignee, {
+        worker: args.worker,
+        capabilities: args.capabilities,
+        leaseSeconds,
+      })
       saveMission(cwd, mission)
-      return `Claimed ${args.task_id}`
+      return `Claimed ${args.task_id} by ${task.claimedBy}; lease expires ${new Date(task.leaseExpiresAt).toISOString()}; attempts=${task.claimAttempts}`
+    },
+  })
+
+// ── mission_heartbeat / mission_release ────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_heartbeat',
+    description: 'Extend a claimed task lease. Use for long-running work so the lease does not expire and the task is reclaimed by another worker.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Claimed task id.' },
+        worker: { type: 'string', description: 'Owner id used at claim time.' },
+        lease_seconds: { type: 'number', description: 'New lease duration in seconds; default 7200.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      required: ['task_id', 'worker'],
+      additionalProperties: false,
+    },
+    output: textOutput('mission_heartbeat result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd)
+      const leaseSeconds = Number.isFinite(args.lease_seconds) ? args.lease_seconds : DEFAULT_LEASE_SECONDS
+      const task = heartbeatTask(mission, args.task_id, args.worker, leaseSeconds)
+      saveMission(cwd, mission)
+      return `Heartbeated ${args.task_id}; new lease expires ${new Date(task.leaseExpiresAt).toISOString()}`
+    },
+  })
+
+  ctx.tools.register({
+    name: 'mission_release',
+    description: 'Release a claimed task back to open, clearing the lease so another worker can claim it. Use when you cannot finish.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Claimed task id.' },
+        worker: { type: 'string', description: 'Owner id used at claim time.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      required: ['task_id', 'worker'],
+      additionalProperties: false,
+    },
+    output: textOutput('mission_release result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd)
+      releaseTask(mission, args.task_id, args.worker)
+      saveMission(cwd, mission)
+      return `Released ${args.task_id} back to open`
     },
   })
 
@@ -512,6 +572,177 @@ export function apply(ctx) {
       const result = checkMission(mission)
       if (result.ok) return `mission_check: PASS\n\n${statusText(mission)}`
       return `mission_check: FAIL\n${result.errors.map((e) => `- ${e}`).join('\n')}`
+    },
+  })
+
+// ── blind review toolchain ─────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_blind_review',
+    description: 'Record a no-memory blind review of a deliverable. Supply the submission path, the pre-recorded self rating, external avg_rating/n_reviews/decision/top_weaknesses. Writes blind_review.md at the workspace root and stores calibration_gap on the mission.',
+    parameters: {
+      type: 'object',
+      properties: {
+        submission_path: { type: 'string', description: 'Path to the dehydrated submission/deliverable the blind reviewer saw.' },
+        self_rating: { type: 'number', description: 'Producer/Captain claimed rating 1-10, recorded before blind review.' },
+        avg_rating: { type: 'number', description: 'Average external blind-review rating 1-10.' },
+        n_reviews: { type: 'integer', description: 'Number of independent external reviews.' },
+        decision: { type: 'string', enum: ['accept', 'borderline', 'reject'], description: 'External decision.' },
+        top_weaknesses: { type: 'array', items: { type: 'string' }, description: 'Top weaknesses from the blind review.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      required: ['submission_path', 'avg_rating', 'n_reviews', 'decision'],
+      additionalProperties: false,
+    },
+    output: textOutput('mission_blind_review result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd)
+      const selfRating = Number.isFinite(args.self_rating) ? args.self_rating : null
+      const avg = Number(args.avg_rating)
+      if (!Number.isFinite(avg) || avg < 1 || avg > 10) throw new Error('avg_rating must be 1-10')
+      const n = Math.max(1, Math.floor(Number(args.n_reviews) || 1))
+      const gap = selfRating !== null ? Number((selfRating - avg).toFixed(1)) : null
+      const report = `# Blind Review\n\n- submission: ${args.submission_path}\n- avg_rating: ${avg}\n- n_reviews: ${n}\n- decision: ${args.decision}\n- self_claimed_rating: ${selfRating === null ? 'none' : selfRating}\n- calibration_gap: ${gap === null ? 'none' : gap}\n- top_weaknesses:\n${(args.top_weaknesses || []).map((w) => `  - ${w}`).join('\n')}\n`
+      const file = join(cwd, 'blind_review.md')
+      writeFileSync(file, report, 'utf8')
+      mission.blindReview = {
+        submissionPath: args.submission_path,
+        avgRating: avg,
+        nReviews: n,
+        decision: args.decision,
+        selfRating,
+        calibrationGap: gap,
+        topWeaknesses: args.top_weaknesses || [],
+        at: Date.now(),
+      }
+      saveMission(cwd, mission)
+      return `Blind review recorded.\navg_rating=${avg} n_reviews=${n} decision=${args.decision} calibration_gap=${gap === null ? 'none' : gap}\n${report}`
+    },
+  })
+
+  // ── LLM Wiki tools (lightweight, file-based) ───────────────────────────
+  function memoryRoot(cwd) {
+    return join(cwd, '.memory')
+  }
+
+  function ensureMemory(cwd) {
+    const root = memoryRoot(cwd)
+    for (const dir of ['', 'methods', 'pitfalls', 'decisions', 'missions']) {
+      mkdirSync(join(root, dir), { recursive: true })
+    }
+  }
+
+  function slugify(title) {
+    return String(title).trim().toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-+|-+$/g, '') || 'page'
+  }
+
+  function listMdFiles(dir, out = []) {
+    if (!existsSync(dir)) return out
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name)
+      const st = statSync(full)
+      if (st.isDirectory()) listMdFiles(full, out)
+      else if (name.endsWith('.md')) out.push(full)
+    }
+    return out
+  }
+
+  ctx.tools.register({
+    name: 'wiki_write',
+    description: 'Create or update a page in .memory/. Before writing, scan/search existing pages to avoid duplication and find [[slug]] targets. One page = one coherent topic. Add a summary, domain:<x> tag, and cross-links.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Page title.' },
+        summary: { type: 'string', description: 'One-line summary shown in index.' },
+        content: { type: 'string', description: 'Markdown body with [[slug]] cross-links.' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags; include one domain:<x> when non-daily.' },
+        category: { type: 'string', enum: ['methods', 'pitfalls', 'decisions', 'missions'], description: 'Optional subdirectory. Defaults to methods if domain tag contains method, else root.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      required: ['title', 'content', 'summary'],
+      additionalProperties: false,
+    },
+    output: textOutput('wiki_write result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      ensureMemory(cwd)
+      const slug = slugify(args.title)
+      const category = args.category && ['methods','pitfalls','decisions','missions'].includes(args.category) ? args.category : 'methods'
+      const file = join(memoryRoot(cwd), category, `${slug}.md`)
+      const tags = (args.tags || []).map(String)
+      const body = `# ${args.title}\n\n- summary: ${args.summary}\n- tags: ${tags.join(', ')}\n\n${args.content}\n`
+      writeFileSync(file, body, 'utf8')
+      return `Wrote wiki page ${file}`
+    },
+  })
+
+  ctx.tools.register({
+    name: 'wiki_search',
+    description: 'Search .memory/ by free text or domain tag. Returns matching page paths and first lines. Use before writing to avoid duplicates and find cross-links.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Free-text query.' },
+        domain: { type: 'string', description: 'Optional domain:<x> filter.' },
+        limit: { type: 'integer', description: 'Max results, default 10.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      required: ['query'],
+      additionalProperties: false,
+    },
+    output: textOutput('wiki_search result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const root = memoryRoot(cwd)
+      if (!existsSync(root)) return 'No .memory directory yet.'
+      const q = String(args.query).toLowerCase()
+      const domain = args.domain ? String(args.domain).toLowerCase() : null
+      const limit = Math.max(1, Math.min(30, Number(args.limit) || 10))
+      const results = []
+      for (const file of listMdFiles(root)) {
+        const text = readFileSync(file, 'utf8')
+        if (q && !text.toLowerCase().includes(q)) continue
+        if (domain && !text.toLowerCase().includes(domain.toLowerCase())) continue
+        const first = text.split('\n').slice(0, 8).join(' | ').slice(0, 200)
+        results.push({ path: file, preview: first })
+        if (results.length >= limit) break
+      }
+      return results.length ? results.map((r) => `${r.path}\n  ${r.preview}`).join('\n') : 'No matching wiki pages.'
+    },
+  })
+
+  ctx.tools.register({
+    name: 'wiki_lint',
+    description: 'Scan .memory/ for maintenance issues: missing summaries, broken [[slug]] links, orphan pages. Returns findings only; no auto-fix.',
+    parameters: {
+      type: 'object',
+      properties: {
+        maxResults: { type: 'integer', description: 'Default 20, max 100.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('wiki_lint result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const root = memoryRoot(cwd)
+      if (!existsSync(root)) return 'No .memory directory yet.'
+      const files = listMdFiles(root)
+      const max = Math.max(1, Math.min(100, Number(args.maxResults) || 20))
+      const findings = []
+      const slugs = new Set(files.map((f) => f.replace(root + '/', '')))
+      for (const file of files) {
+        const text = readFileSync(file, 'utf8')
+        if (!/summary:/i.test(text)) findings.push(`missing-summary: ${file}`)
+        const links = [...text.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1].replace(/[^a-z0-9\u4e00-\u9fff]+/gi, '-'))
+        for (const slug of links) {
+          const exists = files.some((f) => f === `${root}/${slug}.md` || f.endsWith(`/${slug}.md`))
+          if (!exists) findings.push(`broken-link: ${file} -> [[${slug}]]`)
+        }
+        if (findings.length >= max) break
+      }
+      return findings.length ? findings.slice(0, max).join('\n') : 'wiki_lint: clean'
     },
   })
 }
