@@ -27,7 +27,7 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 
 | 组件 | 路径 | 作用 |
 |---|---|---|
-| **dsh-mission-control** | `packages/dsh-mission-control/` | mission 状态机 + `mission_*` 工具 + 元校验器 |
+| **dsh-mission-control** | `packages/dsh-mission-control/` | mission 状态机 + `mission_*` 工具 + Claim Pool/Lease + Blackboard artifacts + Blind Review + LLM Wiki 工具 + 元校验器 |
 | **Long-Run Captain 预设** | `preset/long-run-captain/` | 通用完整系统提示版：主持人 persona + 协议技能（联网调研、自适应验证、苏格拉底自查、LLM verifier 用法） |
 | **Long-Run Captain Router 预设** | `preset/long-run-router/` | 同上能力 + router-standard 极简首轮系统，针对 DeepSeek V4 Flash 系列调优 |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | 参考 LLM-as-a-Verifier 论文与上游 DSH 插件、经过更严格审查修正的 LLM 验证器：`verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
@@ -95,12 +95,16 @@ budget: { maxRounds: 6, maxHours: 4 }
 
 ```text
 mission_start
-→ 早期大量联网调研
-→ mission_add_tasks（每个任务带 acceptance + verificationPlan）
-→ 派 researcher / engineer / reviewer
+→ 早期大量联网调研 + wiki_search 查历史经验
+→ mission_add_tasks（每个任务带 acceptance + verificationPlan + capabilities）
+→ worker 按能力 mission_claim；长任务 mission_heartbeat 续租；干不完 mission_release
+→ 研究方法/工具先写 method-card，已有实现优先复用，防降级/防猜想
 → 长实验用后台任务 + schedule_reminder 定时唤醒
+→ worker 之间用 mission_publish_artifact / mission_consume_artifacts 交换
+→ 完成先 mission_submit + WorkReceipt，再由独立 reviewer 评审
 → 失败任务 mission_replan + replaces 换方向继续
 → verify_track 监控方向是否跑偏
+→ 经验写入 wiki_write，最终前 mission_blind_review + wiki_lint
 → mission_final_audit 逐条核验成功标准
 → mission_complete
 ```
@@ -350,6 +354,12 @@ cp -R preset/long-run-router   "$HOME/.dsh/.agent-presets/long-run-router"
 - DSH 流式接口不暴露 logprobs，所以 LLM verifier 用温度采样平均近似论文的 logits 期望；
 - `schedule_reminder` 目前只在 session live 时唤醒；跨重启冷恢复是后续方向；
 - 独立评审是流程约束，不是沙箱隔离。
+- Claim Pool / Lease 是文件级实现（mission.json + 时间戳），不是独立服务；租约过期自动回收，连续 3 次回收自动 blocked。
+- Capability Matching 是 tag 集合匹配，不内置领域词表；每个 workspace 需自行维护 `.memory/_capabilities.md`，否则标签可能不一致。
+- Blackboard artifact 记录的是 artifact 元数据（类型/路径/生产者），真实文件仍在磁盘上，不做托管复制。
+- `mission_blind_review` 记录外部评审结果并生成 `blind_review.md`；实际评分需要由独立 reviewer/模型调用产生，工具不会自动打分。
+- LLM Wiki 工具是 Markdown + grep 的轻量实现，不是向量库/数据库；`wiki_lint` 只做文本级检查。
+- `method-card` / `wiki_*` 多数是软协议，不强制所有任务；只有实质交付型 mission 的 blind review 是硬门。
 
 ## 致谢
 

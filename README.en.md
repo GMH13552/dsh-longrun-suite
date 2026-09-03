@@ -22,7 +22,7 @@ This suite fixes that with file-backed mission state, a tiny generic task lifecy
 
 | Component | Path | Purpose |
 |---|---|---|
-| **dsh-mission-control** | `packages/dsh-mission-control/` | mission state machine, `mission_*` tools, meta-validator |
+| **dsh-mission-control** | `packages/dsh-mission-control/` | mission state machine, `mission_*` tools, Claim Pool/Lease, Blackboard artifacts, Blind Review, LLM Wiki tools, meta-validator |
 | **Long-Run Captain preset** | `preset/long-run-captain/` | full system-prompt edition: captain persona + protocol skills (web research, adaptive verification, Socratic self-audit, LLM verifier usage) |
 | **Long-Run Captain Router preset** | `preset/long-run-router/` | same capabilities + router-standard minimal first-turn system, tuned for the DeepSeek V4 Flash family |
 | **dsh-plugin-llm-verifier** | `packages/dsh-plugin-llm-verifier/` | LLM-as-a-Verifier based on the paper and the upstream DSH plugin, with stricter review and corrections: `verify_rollout` / `verify_select` / `verify_compare` / `verify_track` |
@@ -79,12 +79,16 @@ Expected flow:
 
 ```text
 mission_start
-→ heavy early web research
-→ mission_add_tasks (acceptance + verificationPlan per task)
-→ researcher / engineer / reviewer agents
+→ heavy early web research + wiki_search for prior experience
+→ mission_add_tasks (acceptance + verificationPlan + capabilities)
+→ workers claim by capability with mission_claim; long tasks mission_heartbeat; release when unable
+→ method-card before non-trivial implementation; reuse first, no speculation
 → long experiments in background + schedule_reminder self-wake
+→ workers exchange typed artifacts via mission_publish_artifact / mission_consume_artifacts
+→ mission_submit + WorkReceipt, then independent reviewer
 → rejected tasks -> mission_replan + replaces -> new direction
 → verify_track monitors direction health
+→ wiki_write for durable lessons; mission_blind_review + wiki_lint before final
 → mission_final_audit maps every success criterion to evidence
 → mission_complete
 ```
@@ -233,6 +237,12 @@ cp -R preset/long-run-router   "$HOME/.dsh/.agent-presets/long-run-router"
 - DSH streams do not expose logprobs, so the verifier approximates the paper's logit expectation with repeated sampling
 - `schedule_reminder` currently wakes only live sessions; cold resume is a future direction
 - Independent review is a procedural boundary, not a sandbox
+- Claim Pool / Lease is file-based (mission.json + timestamps), not a service; expired leases are reclaimed automatically, and 3 reclaims block the task.
+- Capability Matching is tag set matching with no built-in ontology; each workspace maintains `.memory/_capabilities.md`.
+- Blackboard artifacts store metadata only; real artifact files remain on disk.
+- `mission_blind_review` records external ratings and writes `blind_review.md`; it does not generate ratings itself.
+- LLM Wiki is Markdown + grep, not a vector DB; `wiki_lint` is text-level only.
+- `method-card` / `wiki_*` are mostly soft protocol; only blind review is a hard gate for substantive deliverable missions.
 
 ## Credits
 
