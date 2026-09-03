@@ -58,7 +58,7 @@ export function apply(ctx, config) {
   const routerMode = config.routerMode === 'spec' ? 'spec' : 'standard'
   const RL_PERSONA = 'You are a helpful software engineer assistant.'
   const MISSION_TOOL_USAGE =
-    'Long-Run tool usage (once tools expand): before planning use wiki_search for prior methods; before non-trivial implementation write method-card.md (load method-card skill); claim tasks with capabilities and heartbeat long work with mission_heartbeat (mission_release if unable); exchange work via mission_publish_artifact / mission_consume_artifacts; after durable lessons use wiki_write; before final audit use mission_blind_review + wiki_lint. Do not skip these when they apply.'
+    'Long-Run hard-task flow: load the `skill` named hard-task-flow for the full order. Short version: 1) wiki_search + mission_start + task-profile; 2) plan.md + method-card + plan-critique; 3) mission_add_tasks with capabilities, then mission_claim/heartbeat/release; 4) publish/consume artifacts; 5) mission_submit -> independent review -> replan on reject; 6) before final: mission_blind_review + wiki_lint + wiki_write, then mission_final_audit + mission_check + mission_complete. Do not skip steps that apply.'
 
   /** spec 路由模式的首轮工具面（旧行为；weak 也走 default 面）。 */
   function legacyCore(mode) {
