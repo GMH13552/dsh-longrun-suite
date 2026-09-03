@@ -81,6 +81,13 @@ Spawn `subagent_reviewer` as plan critic. Reject/revise until pass.
 ## 3. Claim & execute with worker pool
 
 - `mission_add_tasks` with acceptance/verificationPlan/capabilities.
+- Before claiming, call `mission_ready` to see the ready queue width and the
+  tasks that can be claimed.
+- If width >= 2 and tasks are independent, spawn multiple workers. Each worker
+  loops:
+  ```text
+  mission_ready -> mission_claim -> work -> mission_submit/artifact -> repeat
+  ```
 - Workers claim matching tasks:
   ```text
   mission_claim(task_id, worker, capabilities, lease_seconds)

@@ -311,6 +311,7 @@ not optional decorations:
 | Before non-trivial implementation | `method-card` skill | record reuse vs self-implement vs uncertain |
 | Before writing new code/method | `wiki_search` again | avoid duplicating existing pages/methods |
 | After learning something durable | `wiki_write` | distill into `.memory/` |
+| Before claiming | `mission_ready` | see ready queue width and claimable tasks |
 | Claimed long task | `mission_heartbeat` before lease expiry | keep the lease alive |
 | Cannot finish task | `mission_release` | unlock for another worker |
 | Worker needs upstream input | `mission_consume_artifacts` | read typed artifacts, not chat |

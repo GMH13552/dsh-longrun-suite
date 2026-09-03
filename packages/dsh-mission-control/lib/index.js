@@ -620,6 +620,45 @@ export function apply(ctx) {
     },
   })
 
+// ── mission_ready: show claimable ready queue ──────────────────────────
+  ctx.tools.register({
+    name: 'mission_ready',
+    description: 'List claimable tasks (queue view) for the current mission. Returns tasks whose dependencies are satisfied, status is open, and not lease-blocked, with capabilities, kind, and assignee. Workers should call this before claiming; if width >= 2, multiple workers can claim in parallel.',
+    parameters: {
+      type: 'object',
+      properties: {
+        capabilities: { type: 'array', items: { type: 'string' }, description: 'Optional worker capabilities; filters to tasks fully covered by them.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('mission_ready result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd)
+      const have = new Set(Array.isArray(args.capabilities) ? args.capabilities : [])
+      const ready = []
+      for (const task of Object.values(mission.tasks)) {
+        if (task.status !== 'open' || task.leaseBlocked) continue
+        const depsOk = (task.dependencies || []).every((d) => mission.tasks[d]?.status === 'accepted')
+        if (!depsOk) continue
+        const caps = task.capabilities || []
+        if (caps.length > 0 && have.size > 0 && !caps.every((c) => have.has(c))) continue
+        ready.push({
+          id: task.id,
+          kind: task.kind,
+          assignee: task.assignee,
+          capabilities: caps,
+          title: task.title,
+          dependencies: task.dependencies || [],
+        })
+      }
+      if (ready.length === 0) return 'Ready queue is empty.'
+      const lines = ready.map((t) => `- ${t.id} [${t.kind || '?'}] ${t.title}${t.capabilities.length ? ` cap=${t.capabilities.join(',')}` : ''}${t.assignee ? ` assignee=${t.assignee}` : ''}`)
+      return `Ready queue width=${ready.length}:\n${lines.join('\n')}`
+    },
+  })
+
 // ── Blackboard / artifact registry ─────────────────────────────────────
   function ensureArtifacts(mission) {
     if (!Array.isArray(mission.artifacts)) mission.artifacts = []
