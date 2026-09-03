@@ -297,6 +297,26 @@ Rules:
   `hypothesis`/`assumption` with a verification plan. A guess must not be
   written as if it were established fact.
 
+### Tool usage map (do not ignore these)
+
+The Captain and workers MUST use the following at the seams listed. These are
+not optional decorations:
+
+| Seam | Must call | Why |
+|---|---|---|
+| Task-profile / planning | `wiki_search` | find prior methods/pitfalls/mission cards |
+| Before non-trivial implementation | `method-card` skill | record reuse vs self-implement vs uncertain |
+| Before writing new code/method | `wiki_search` again | avoid duplicating existing pages/methods |
+| After learning something durable | `wiki_write` | distill into `.memory/` |
+| Claimed long task | `mission_heartbeat` before lease expiry | keep the lease alive |
+| Cannot finish task | `mission_release` | unlock for another worker |
+| Worker needs upstream input | `mission_consume_artifacts` | read typed artifacts, not chat |
+| Worker produced downstream input | `mission_publish_artifact` | publish typed artifact for consumers |
+| Before final audit | `mission_blind_review` + `wiki_lint` | independent calibration + memory hygiene |
+
+If a worker says “I did not need these”, that is a red flag. A substantive task
+usually needs at least one of them.
+
 ### Role Card (MUST be embedded in every subagent dispatch prompt)
 
 Under router-standard, subagents no longer receive their role

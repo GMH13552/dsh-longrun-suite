@@ -620,6 +620,72 @@ export function apply(ctx) {
     },
   })
 
+// ── Blackboard / artifact registry ─────────────────────────────────────
+  function ensureArtifacts(mission) {
+    if (!Array.isArray(mission.artifacts)) mission.artifacts = []
+    return mission.artifacts
+  }
+
+  ctx.tools.register({
+    name: 'mission_publish_artifact',
+    description: 'Publish a typed artifact to the mission blackboard. Downstream tasks can consume it by artifact_type. This is the explicit artifact-communication channel: workers do not chat, they read/write artifacts.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Producer task id.' },
+        artifact_type: { type: 'string', description: 'Type/contract of the artifact (e.g. metrics.json, model-design.md, run.log).' },
+        path: { type: 'string', description: 'Path/URL to the artifact.' },
+        summary: { type: 'string', description: 'Short summary of what it contains and what downstream can use.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      required: ['task_id', 'artifact_type', 'path'],
+      additionalProperties: false,
+    },
+    output: textOutput('mission_publish_artifact result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd)
+      const artifacts = ensureArtifacts(mission)
+      const artifact = {
+        id: `art-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        taskId: args.task_id,
+        type: String(args.artifact_type),
+        path: String(args.path),
+        summary: args.summary || null,
+        at: Date.now(),
+      }
+      artifacts.push(artifact)
+      saveMission(cwd, mission)
+      return `Published artifact ${artifact.id} (${artifact.type}) from ${artifact.taskId}`
+    },
+  })
+
+  ctx.tools.register({
+    name: 'mission_consume_artifacts',
+    description: 'List typed artifacts on the mission blackboard, optionally filtered by artifact_type and/or producer task id. Use this instead of asking other agents; artifacts are the communication channel.',
+    parameters: {
+      type: 'object',
+      properties: {
+        artifact_type: { type: 'string', description: 'Optional artifact type filter.' },
+        producer_task_id: { type: 'string', description: 'Optional producer task filter.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('mission_consume_artifacts result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd)
+      const artifacts = ensureArtifacts(mission)
+      const list = artifacts.filter((a) =>
+        (args.artifact_type ? a.type === args.artifact_type : true) &&
+        (args.producer_task_id ? a.taskId === args.producer_task_id : true)
+      )
+      if (list.length === 0) return 'No matching artifacts on the blackboard.'
+      return list.map((a) => `${a.id} | ${a.type} | task=${a.taskId} | ${a.path}${a.summary ? ` | ${a.summary}` : ''}`).join('\n')
+    },
+  })
+
   // ── LLM Wiki tools (lightweight, file-based) ───────────────────────────
   function memoryRoot(cwd) {
     return join(cwd, '.memory')
