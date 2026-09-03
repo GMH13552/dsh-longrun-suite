@@ -97,6 +97,60 @@ mission_start
 - `mission_check` validates evidence honesty, not domain correctness
 - `socratic-self-audit` makes producers attack their own work before submission
 - `verify_track` uses the reference implementation's strict calibration prompt and refuses to trust agent narration; pivot selection and rollout criteria also follow the reference implementation
+- **WorkReceipt**: evidence files are SHA-256 hashed on submit; passing review writes an immutable work receipt
+- **Swarm-style worker pool**: tasks can declare `capabilities`; workers claim only matching tasks; leases are extended by `mission_heartbeat`, released by `mission_release`, expired automatically, and blocked after repeated reclaims
+- **Blackboard artifact communication**: `mission_publish_artifact` / `mission_consume_artifacts`; workers exchange typed artifacts instead of chatting
+- **No-memory blind review**: `mission_blind_review` writes `blind_review.md` + `calibration_gap` and is a hard gate for substantive deliverable missions
+- **LLM Wiki memory**: `wiki_write` / `wiki_search` / `wiki_lint` maintain a searchable `.memory/` across missions
+
+## Overall structure
+
+```text
+Host / plugin layer
+├── dsh-mission-control
+│   ├── lib/core.js          # pure mission state machine (no DSH dependency)
+│   ├── lib/index.js         # mission_* / wiki_* / artifact tools
+│   ├── bin/mission_check.mjs
+│   └── preset/              # Captain presets and protocol skills
+├── dsh-timer-scheduler-ui    # reminders + auto-cancel + parent fallback
+└── dsh-plugin-llm-verifier   # LLM-as-a-Verifier
+
+Agent / preset layer
+├── long-run-captain/         # full system-prompt edition
+└── long-run-router/          # router-standard minimal edition (DeepSeek V4 Flash tuned)
+
+Skills layer
+├── mission-protocol          # decomposition, dispatch, reuse-first, tool map
+├── task-profile              # Input/Decision/Output/Core Challenge/No-Lazy
+├── plan-critique             # plan critique + A/B/C + module contracts
+├── adaptive-verification     # minimum validation package
+├── method-card               # method provenance / downgrade detector
+├── wiki-memory               # LLM Wiki: ingest/query/lint
+├── lessons                   # intra-mission lessons + mission-legacy + mission-cases
+└── report-protocol / socratic-self-audit / etc.
+
+Runtime data layer
+├── .mission/<id>/mission.json   # mission/task/attempt/receipt/blindReview/artifacts
+├── .memory/                     # cross-mission LLM Wiki, capability vocab, worker resumes
+├── .mission-cases/              # lightweight case cards
+└── timer-reminders.json         # persisted reminders
+```
+
+## References & inspiration
+
+This project borrows mechanism-level designs from several public agent systems:
+
+| Project | Borrowed idea | Our adaptation |
+|---|---|---|
+| **AutoResearch (EvoMap)** | workflow queue, claim pool, lease, receipts, blind review | mission queue + `mission_claim/heartbeat/release` + WorkReceipt + blind-review gate |
+| **ZZBoard** | decentralized work board, artifacts, signed receipts | blackboard tools + `mission_publish/consume_artifacts` |
+| **Clawix** | LLM Wiki memory, capability vocabulary, role workers | `.memory/` + `wiki_write/search/lint` + `_capabilities.md` + worker resumes |
+| **Flock** | blackboard principle: artifacts instead of chat | typed artifact publish/consume |
+| **unsorry** | repo-as-queue, claim substrate, expiry/reclaim | lease expiry reclaim + blocked after repeated reclaims |
+| **CUMCM math-modeling Skill** | structure diagnosis, A/B/C candidates, minimum validation, innovation evidence | generic Input/Decision/Output + A/B/C + validation package |
+| **Karpathy LLM Wiki** | ingest/query/lint wiki memory paradigm | wiki-memory skill + tools |
+
+We adapt, not copy: DSH genericity is preserved and all domain content remains owned by mission/task data.
 
 ## Repository layout
 

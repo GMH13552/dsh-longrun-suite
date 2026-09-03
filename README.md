@@ -113,6 +113,159 @@ mission_start
 - **元校验器**：`mission_check` 只检查证据诚实性（缺证据/缺评审/缺 final audit 一律 FAIL）
 - **苏格拉底自查**：提交前用 `socratic-self-audit` 技能攻击自己的结论
 - **严格 verify_track**：使用 LLM-as-a-Verifier 参考实现的校准 prompt，不信任 agent 的自我宣称；pivot 选择与 rollout 评分标准也已对齐论文/参考实现
+- **WorkReceipt**：提交任务时记录证据文件 SHA-256，评审通过后生成不可变工作收据
+- **蜂群式 Worker 池**：任务可带 `capabilities`，worker 凭能力匹配抢单；长任务用 `mission_heartbeat` 续租、`mission_release` 释放，过期自动回收，多次回收自动 blocked
+- **Blackboard 工件通信**：`mission_publish_artifact` / `mission_consume_artifacts`，worker 之间通过类型化 artifact 交换，不靠聊天
+- **无记忆盲审**：`mission_blind_review` 生成 `blind_review.md` + `calibration_gap`，实质交付型 mission 完成前作为硬门
+- **LLM Wiki 记忆**：`wiki_write` / `wiki_search` / `wiki_lint`，维护 `.memory/` 下可检索、可 lint 的跨任务经验
+
+## Worker 池 / Claim Pool & Lease
+
+任务不再只是“由 Captain 指派”，worker 可以凭能力抢单：
+
+```text
+mission_claim
+  task_id: t-impl
+  worker: worker-1
+  capabilities: [python, pytorch, remote-gpu]
+  lease_seconds: 7200
+```
+
+- 任务可以声明 `capabilities`，worker 能力不覆盖则拒绝；
+- 抢到后持有租约；
+- 长任务用 `mission_heartbeat` 续租；
+- 干不完用 `mission_release` 放回队列；
+- 租约过期自动回收；
+- 同一个任务被回收 3 次自动 `leaseBlocked`，需要人工看原因；
+- 过期 worker 迟到回写会被拒绝（claim lost）。
+
+## Blackboard / artifact 通信
+
+worker 之间不直接聊天，使用类型化工件：
+
+```text
+mission_publish_artifact
+  task_id: t-run
+  artifact_type: run-metrics.json
+  path: results/run-metrics.json
+  summary: 11 个数据集指标
+
+mission_consume_artifacts
+  artifact_type: run-metrics.json
+```
+
+所有 artifacts 存在 mission 状态中，下游按类型/生产者读取。
+
+## LLM Wiki 记忆
+
+跨任务经验维护在 `.memory/`：
+
+```text
+.memory/
+├── _schema.md
+├── _capabilities.md
+├── methods/
+├── pitfalls/
+├── decisions/
+├── missions/
+└── workers/
+```
+
+- `wiki_write`：新增/更新页面，带 `[[slug]]` 链接；
+- `wiki_search`：按文本/domain 搜索；
+- `wiki_lint`：检查缺摘要、断链、孤儿页、过期声明、worker 简历缺能力；
+- `_capabilities.md`：每个 workspace 自定义能力词表/别名，系统不做硬编码；
+- `workers/*.md`：worker 简历（role / capabilities / skills / history）。
+
+## 方法出处卡与防偷懒
+
+- `method-card` 技能用于非平凡实现前记录：
+  - 标准/经典方法；
+  - 每个组件是 existing / verified-no-existing / uncertain；
+  - 复用 vs 自研；
+  - 是否有方法降级（如用网格搜索代替适用优化器）；
+  - 未证实的假设列表。
+- `mission-protocol` 强制“复用优先 + 反猜想”；
+- reviewer 会检查是否悄悄降级、是否把猜想当事实。
+
+## 独立盲审
+
+`mission_blind_review` 生成：
+
+```text
+blind_review.md
+avg_rating
+n_reviews
+decision
+top_weaknesses
+self_claimed_rating
+calibration_gap
+```
+
+- 只给脱水后的交付物，不给历史/自评/内部结论；
+- 实质交付型 mission（有 accepted 的 research / engineering / deliverable-style 任务或 reportPath）完成前必须有盲审记录；
+- bookkeeping / synthesis / coordination-only 任务豁免。
+
+## 工具使用地图（防止模型忽略）
+
+| 阶段 | 必须/建议使用 |
+|---|---|
+| 规划前 | `wiki_search` |
+| 非平凡实现前 | `method-card` |
+| 学到的经验 | `wiki_write` |
+| 长任务 | `mission_heartbeat` |
+| 不能完成 | `mission_release` |
+| worker 交换数据 | `mission_publish_artifact` / `mission_consume_artifacts` |
+| 最终审计前 | `mission_blind_review` + `wiki_lint` |
+
+## 整体结构
+
+```text
+Host / 插件层
+├── dsh-mission-control
+│   ├── lib/core.js          # 纯任务状态机（无 DSH 依赖）
+│   ├── lib/index.js         # mission_* / wiki_* / artifact 工具注册
+│   ├── bin/mission_check.mjs
+│   └── preset/              # Captain 预设与协议技能
+├── dsh-timer-scheduler-ui    # 定时唤醒 + 提醒自动取消 + 父会话回退
+└── dsh-plugin-llm-verifier   # LLM-as-a-Verifier
+
+Agent / 预设层
+├── long-run-captain/         # 完整系统提示版
+└── long-run-router/          # router-standard 极简版（DeepSeek V4 Flash 优化）
+
+技能层
+├── mission-protocol          # 任务拆解、派发、复用优先、反猜想、工具地图
+├── task-profile              # Input/Decision/Output/Core Challenge/No-Lazy
+├── plan-critique             # 计划批判 + A/B/C + 模块契约 + 反降级
+├── adaptive-verification     # 最低验证包
+├── method-card               # 方法出处卡 / 标准方法对照 / 降级检测
+├── wiki-memory               # LLM Wiki：ingest/query/lint
+├── lessons                   # 任务内经验 + mission-legacy + mission-cases
+└── report-protocol / socratic-self-audit / etc.
+
+运行时数据层
+├── .mission/<id>/mission.json   # mission/task/attempt/receipt/blindReview/artifacts
+├── .memory/                     # 跨任务 LLM Wiki + 能力词表 + worker 简历
+├── .mission-cases/              # 轻量案例卡
+└── timer-reminders.json         # 提醒持久化
+```
+
+## 参考与借鉴
+
+本项目不是从零发明，而是吸收了多个公开 Agent 系统的“机制层”设计：
+
+| 项目 | 借鉴了什么 | 我们怎么做 |
+|---|---|---|
+| **AutoResearch (EvoMap)** | workflow queue、claim pool、lease、receipt、blind review | mission 队列 + `mission_claim/heartbeat/release` + WorkReceipt + 盲审硬门 |
+| **ZZBoard** | 去中心化工作板、artifact、signed receipt | Blackboard tools + `mission_publish/consume_artifacts` |
+| **Clawix** | LLM Wiki 记忆、性能词表、角色化 worker | `.memory/` + `wiki_write/search/lint` + `_capabilities.md` + worker 简历 |
+| **Flock** | Blackboard 原则：不用聊天，用类型化工件通信 | artifact type 发布/消费 |
+| **unsorry** | repo 即队列、claim substrate、expiry/reclaim | 租约过期回收 + 多次回收 blocked |
+| **CUMCM math-modeling Skill** | 结构诊断、A/B/C 候选、最低验证、创新证据 | 通用化为 Input/Decision/Output + A/B/C + 验证包 |
+| **Karpathy LLM Wiki** | ingest/query/lint 的 wiki 记忆范式 | 落地为 wiki-memory |
+
+“参考”不是照搬：我们保留 DSH 通用性，领域内容全部交给 mission/task 数据，不硬编码任何数学/软件/研究流程。
 
 ## 仓库结构
 
