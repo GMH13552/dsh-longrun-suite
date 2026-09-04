@@ -160,9 +160,6 @@ window.__ModuleLoader__.load({
         var chosenState = React.useState(null)
         var chosen = chosenState[0]
         var setChosen = chosenState[1]
-        var hideRejectedState = React.useState(false)
-        var hideRejected = hideRejectedState[0]
-        var setHideRejected = hideRejectedState[1]
         var hiddenState = React.useState({})
         var hiddenIds = hiddenState[0]
         var setHiddenIds = hiddenState[1]
@@ -256,18 +253,26 @@ window.__ModuleLoader__.load({
           try { window.localStorage.setItem(viewKey, JSON.stringify(view)) } catch (e) {}
         }, [mission, view])
 
+        React.useEffect(function () {
+          if (!mission || !positions) return
+          var lp = computeLayout(mission.tasks || []).positions
+          var next = null
+          Object.keys(lp).forEach(function (id) {
+            if (!positions[id]) {
+              if (!next) next = Object.assign({}, positions)
+              next[id] = { x: lp[id].x, y: lp[id].y }
+            }
+          })
+          if (next) setPositions(next)
+        }, [mission, positions])
+
         if (!mission) {
           return React.createElement('div', { className: 'dsh-mission-view' }, React.createElement('div', { className: 'dsh-mission-empty' }, error || '\u5f53\u524d\u4f1a\u8bdd\u6ca1\u6709\u4efb\u52a1\uff08\u5728\u5de5\u4f5c\u533a\u542f\u52a8 mission_start \u540e\u53ef\u89c6\u5316\uff09'))
         }
 
         var tasks = mission.tasks || []
         var visibleTasks = tasks.filter(function (t) {
-          if (hiddenIds[t.id]) return false
-          if (!hideRejected) return true
-          if (t.status !== 'rejected') return true
-          // 修改/替换类的上游（被替换的旧任务）不因“隐藏已拒绝”而消失
-          if (t.supersededBy) return true
-          return false
+          return !hiddenIds[t.id]
         })
         var layout = computeLayout(visibleTasks)
         function currentPos(id) {
@@ -471,11 +476,11 @@ window.__ModuleLoader__.load({
               React.createElement('div', { className: 'dsh-side-label' }, '封锁'),
               React.createElement('div', { className: 'dsh-side-empty' }, task.blockedReason || 'claim 次数超限'),
             ) : null,
-            task.status === 'rejected' ? React.createElement('button', {
+            React.createElement('button', {
               className: 'dsh-canvas-btn',
               style: { alignSelf: 'flex-start' },
               onClick: function () { deleteTask(task) },
-            }, '从图中删除') : null,
+            }, '隐藏节点'),
           )
         } else {
           side = React.createElement('div', { className: 'dsh-mission-side' },
@@ -523,16 +528,11 @@ window.__ModuleLoader__.load({
             ),
             React.createElement('div', { className: 'dsh-mission-line1' },
               statPills,
-              React.createElement('button', {
-                className: 'dsh-mission-pill',
-                style: { cursor: 'pointer' },
-                onClick: function () { setHideRejected(!hideRejected) },
-              }, hideRejected ? ('显示已拒绝 ' + tasks.filter(function (t) { return t.status === 'rejected' }).length) : '隐藏已拒绝'),
               Object.keys(hiddenIds).length > 0 ? React.createElement('button', {
                 className: 'dsh-mission-pill',
                 style: { cursor: 'pointer' },
                 onClick: restoreHidden,
-              }, '已删除 ' + Object.keys(hiddenIds).length + ' · 恢复') : null,
+              }, '已隐藏 ' + Object.keys(hiddenIds).length + ' · 恢复') : null,
             ),
           ),
           React.createElement('div', { className: 'dsh-mission-main' },
