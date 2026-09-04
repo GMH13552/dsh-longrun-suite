@@ -21,7 +21,7 @@ window.__ModuleLoader__.load({
       '.dsh-mission-main{flex:1;display:flex;min-height:0;}',
       '.dsh-mission-canvas{flex:1;min-width:0;position:relative;overflow:hidden;background:var(--dsw-alias-bg-base);overscroll-behavior:none;touch-action:none;}',
       '.dsh-mission-canvas svg{display:block;width:100%;height:100%;}',
-      '.dsh-mission-side{width:300px;min-width:260px;max-width:340px;box-sizing:border-box;border-left:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}',
+      '.dsh-mission-side{flex:0 0 300px;width:300px;min-width:300px;max-width:300px;box-sizing:border-box;border-left:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}',
       '.dsh-side-section{display:flex;flex-direction:column;gap:5px;}',
       '.dsh-side-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary);line-height:1.35;word-break:break-word;}',
       '.dsh-side-label{font-size:10px;color:var(--dsw-alias-label-secondary);text-transform:uppercase;letter-spacing:.03em;}',
@@ -256,7 +256,14 @@ window.__ModuleLoader__.load({
         }
 
         var tasks = mission.tasks || []
-        var visibleTasks = tasks.filter(function (t) { return !hiddenIds[t.id] && (hideRejected ? t.status !== 'rejected' : true) })
+        var visibleTasks = tasks.filter(function (t) {
+          if (hiddenIds[t.id]) return false
+          if (!hideRejected) return true
+          if (t.status !== 'rejected') return true
+          // 修改/替换类的上游（被替换的旧任务）不因“隐藏已拒绝”而消失
+          if (t.supersededBy) return true
+          return false
+        })
         var layout = computeLayout(visibleTasks)
         function currentPos(id) {
           return positions && positions[id] ? positions[id] : layout.positions[id]
@@ -371,6 +378,51 @@ window.__ModuleLoader__.load({
               strokeWidth: 1.4,
               markerEnd: 'url(#dsh-mission-arrow)',
               key: d + '->' + t.id,
+            }))
+          })
+        })
+
+        // 长依赖跳过隐藏中间节点：把被隐藏节点之前的可见上游以虚线连到下游
+        var allById = {}
+        tasks.forEach(function (t) { allById[t.id] = t })
+        var visibleSet = {}
+        visibleTasks.forEach(function (t) { visibleSet[t.id] = true })
+        function visibleAncestors(id, seen) {
+          if (seen[id]) return []
+          seen[id] = true
+          var t = allById[id]
+          if (!t) return []
+          var out = []
+          ;(t.dependencies || []).forEach(function (dep) {
+            if (visibleSet[dep]) {
+              if (out.indexOf(dep) < 0) out.push(dep)
+            } else if (allById[dep]) {
+              visibleAncestors(dep, seen).forEach(function (a) {
+                if (out.indexOf(a) < 0) out.push(a)
+              })
+            }
+          })
+          return out
+        }
+        visibleTasks.forEach(function (t) {
+          visibleAncestors(t.id, {}).forEach(function (a) {
+            if ((t.dependencies || []).indexOf(a) >= 0) return
+            var p1 = currentPos(a)
+            var p2 = currentPos(t.id)
+            if (!p1 || !p2) return
+            var x1 = p1.x + layout.nodeW / 2
+            var y1 = p1.y + layout.nodeH
+            var x2 = p2.x + layout.nodeW / 2
+            var y2 = p2.y
+            var my = (y1 + y2) / 2
+            edges.push(React.createElement('path', {
+              d: 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2,
+              fill: 'none',
+              stroke: 'var(--dsw-alias-state-warn-primary)',
+              strokeWidth: 1.2,
+              strokeDasharray: '3 4',
+              markerEnd: 'url(#dsh-mission-arrow)',
+              key: 'long:' + a + '->' + t.id,
             }))
           })
         })
