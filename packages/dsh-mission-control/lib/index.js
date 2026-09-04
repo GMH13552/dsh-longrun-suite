@@ -82,15 +82,41 @@ function loadMission(cwd, missionId) {
   return readJson(file)
 }
 
+function sessionIdOf(exec) {
+  return exec?.agent?.id ?? exec?.agent?.session?.header?.id ?? ''
+}
+
+function sessionLatestFile(cwd, sessionId) {
+  const safe = String(sessionId || 'unknown').replace(/[^A-Za-z0-9_.-]/g, '_')
+  return join(missionRoot(cwd), 'session-latest', safe + '.json')
+}
+
 function saveMission(cwd, mission) {
   const file = missionFile(cwd, mission.id)
   writeJson(file, mission)
   writeJson(latestFile(cwd), { missionId: mission.id, updatedAt: Date.now() })
+  if (mission.scope === 'session' && mission.sessionId) {
+    const ptr = sessionLatestFile(cwd, mission.sessionId)
+    writeJson(ptr, { missionId: mission.id, updatedAt: Date.now() })
+  }
   return mission
 }
 
-function requireMissionId(args, cwd) {
+function loadSessionMission(cwd, sessionId) {
+  const ptr = sessionLatestFile(cwd, sessionId)
+  if (existsSync(ptr)) {
+    const { missionId } = readJson(ptr)
+    try {
+      return loadMission(cwd, missionId)
+    } catch { /* stale pointer; fall through to workspace latest */ }
+  }
+  return loadLatestMission(cwd)
+}
+
+function requireMissionId(args, cwd, exec) {
   if (args.mission_id) return loadMission(cwd, args.mission_id)
+  const sessionId = sessionIdOf(exec)
+  if (sessionId) return loadSessionMission(cwd, sessionId)
   return loadLatestMission(cwd)
 }
 
@@ -150,6 +176,7 @@ export function apply(ctx) {
         mission_id: { type: 'string', description: 'Optional stable id (lowercase letters/digits/hyphens).' },
         budget: { type: 'object', description: 'Optional { maxRounds?: number, maxHours?: number }.' },
         termination_policy: { type: 'string', enum: ['success', 'budget-or-success'], description: 'How the mission may end. "success" (default) refuses completion unless every mapped task has outcome=success. "budget-or-success" allows a partial report after the budget is exhausted.' },
+        scope: { type: 'string', enum: ['workspace', 'session'], description: 'Default "workspace" inherits current behavior (shared by every session in the workspace). "session" pins this mission to the current session so other sessions in the same workspace keep their own mission view.' },
       },
       required: ['goal', 'success_criteria'],
       additionalProperties: false,
@@ -167,6 +194,12 @@ export function apply(ctx) {
         missionId: args.mission_id,
         terminationPolicy: args.termination_policy,
       })
+      if (args.scope === 'session') {
+        const sessionId = sessionIdOf(exec)
+        if (!sessionId) throw new Error('scope=session requires a live agent session')
+        mission.scope = 'session'
+        mission.sessionId = sessionId
+      }
       saveMission(cwd, mission)
       return `Mission created: ${mission.id}\n\n${statusText(mission)}`
     },
@@ -186,7 +219,7 @@ export function apply(ctx) {
     output: textOutput('mission_status result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       return statusText(mission)
     },
   })
@@ -207,7 +240,7 @@ export function apply(ctx) {
     output: textOutput('mission_append_goal result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       appendGoal(mission, args.goal)
       saveMission(cwd, mission)
       return `Goal appended. Current success criteria:\n${mission.successCriteria.map((c, i) => `- [${i}] ${c}`).join('\n')}`
@@ -250,7 +283,7 @@ export function apply(ctx) {
     output: textOutput('mission_add_tasks result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const ids = addTasks(mission, args.tasks)
       saveMission(cwd, mission)
       return `Added tasks: ${ids.join(', ')}\n\n${statusText(mission)}`
@@ -278,7 +311,7 @@ export function apply(ctx) {
     output: textOutput('mission_update_task result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       updateTask(mission, args.task_id, {
         title: args.title,
         dependencies: args.dependencies,
@@ -311,7 +344,7 @@ export function apply(ctx) {
     output: textOutput('mission_claim result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const leaseSeconds = Number.isFinite(args.lease_seconds) ? args.lease_seconds : DEFAULT_LEASE_SECONDS
       const task = claimTask(mission, args.task_id, args.assignee, {
         worker: args.worker,
@@ -341,7 +374,7 @@ export function apply(ctx) {
     output: textOutput('mission_heartbeat result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const leaseSeconds = Number.isFinite(args.lease_seconds) ? args.lease_seconds : DEFAULT_LEASE_SECONDS
       const task = heartbeatTask(mission, args.task_id, args.worker, leaseSeconds)
       saveMission(cwd, mission)
@@ -365,7 +398,7 @@ export function apply(ctx) {
     output: textOutput('mission_release result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       releaseTask(mission, args.task_id, args.worker)
       saveMission(cwd, mission)
       return `Released ${args.task_id} back to open`
@@ -391,7 +424,7 @@ export function apply(ctx) {
     output: textOutput('mission_submit result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const submittingTask = mission.tasks[args.task_id]
       if (submittingTask?.scrutinyLevel === 'high' && (submittingTask.kind === 'research' || submittingTask.kind === 'engineering' || submittingTask.kind === 'deliverable-style')) {
         const evidenceText = JSON.stringify(args.evidence || []).toLowerCase()
@@ -437,7 +470,7 @@ export function apply(ctx) {
     output: textOutput('mission_review result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       if (args.verdict === 'reject' && (!args.gap || String(args.gap).trim() === '')) {
         throw new Error('reject requires a precise gap describing what blocked acceptance')
       }
@@ -491,7 +524,7 @@ export function apply(ctx) {
     output: textOutput('mission_replan result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const summary = replan(mission, args.note)
       saveMission(cwd, mission)
       return `Replan recorded.\n\n${statusText(mission)}`
@@ -526,7 +559,7 @@ export function apply(ctx) {
     output: textOutput('mission_final_audit result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       finalAudit(mission, args.mapping)
       verifyFinalAuditEvidence(cwd, mission)
       saveMission(cwd, mission)
@@ -554,7 +587,7 @@ export function apply(ctx) {
     output: textOutput('mission_complete result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       completeMission(mission, args.report_path)
       saveMission(cwd, mission)
       return `Mission ${mission.id} completed.\n\n${statusText(mission)}`
@@ -575,7 +608,7 @@ export function apply(ctx) {
     output: textOutput('mission_check result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const result = checkMission(mission)
       if (result.ok) return `mission_check: PASS\n\n${statusText(mission)}`
       return `mission_check: FAIL\n${result.errors.map((e) => `- ${e}`).join('\n')}`
@@ -603,7 +636,7 @@ export function apply(ctx) {
     output: textOutput('mission_blind_review result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const selfRating = Number.isFinite(args.self_rating) ? args.self_rating : null
       const avg = Number(args.avg_rating)
       if (!Number.isFinite(avg) || avg < 1 || avg > 10) throw new Error('avg_rating must be 1-10')
@@ -642,7 +675,7 @@ export function apply(ctx) {
     output: textOutput('mission_ready result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const have = new Set(Array.isArray(args.capabilities) ? args.capabilities : [])
       const ready = []
       for (const task of Object.values(mission.tasks)) {
@@ -690,7 +723,7 @@ export function apply(ctx) {
     output: textOutput('mission_publish_artifact result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const artifacts = ensureArtifacts(mission)
       const artifact = {
         id: `art-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -721,7 +754,7 @@ export function apply(ctx) {
     output: textOutput('mission_consume_artifacts result'),
     async execute(args, exec) {
       const cwd = cwdOf(exec)
-      const mission = requireMissionId(args, cwd)
+      const mission = requireMissionId(args, cwd, exec)
       const artifacts = ensureArtifacts(mission)
       const list = artifacts.filter((a) =>
         (args.artifact_type ? a.type === args.artifact_type : true) &&
@@ -946,7 +979,7 @@ export function apply(ctx) {
   ctx.inject(['webServer'], (httpCtx) => {
     const dispose = httpCtx.webServer.register({
       kind: 'exact',
-      path: '/api/mission-state',
+      path: '/api/mission-state-session',
       handler: (req, res) => {
         try {
           const url = new URL(req.url ?? '/', 'http://localhost')
@@ -964,14 +997,28 @@ export function apply(ctx) {
             res.end(JSON.stringify({ mission: null, error: 'no session cwd available; pass cwd query' }))
             return
           }
-          const latest = latestFile(cwd)
-          if (!existsSync(latest)) {
+          let missionId = missionIdParam
+          if (!missionId) {
+            const ptr = sessionId ? sessionLatestFile(cwd, sessionId) : ''
+            if (sessionId && ptr && existsSync(ptr)) {
+              missionId = readJson(ptr).missionId || ''
+            }
+          }
+          if (!missionId) {
+            const latest = latestFile(cwd)
+            if (!existsSync(latest)) {
+              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
+              res.end(JSON.stringify({ mission: null, cwd }))
+              return
+            }
+            missionId = readJson(latest).missionId || ''
+          }
+          if (!missionId) {
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
             res.end(JSON.stringify({ mission: null, cwd }))
             return
           }
-          const { missionId } = readJson(latest)
-          const mission = missionIdParam ? loadMission(cwd, missionIdParam) : loadMission(cwd, missionId)
+          const mission = loadMission(cwd, missionId)
           res.writeHead(200, {
             'Content-Type': 'application/json; charset=utf-8',
             'Cache-Control': 'no-store',

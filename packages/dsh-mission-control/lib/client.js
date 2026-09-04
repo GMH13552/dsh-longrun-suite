@@ -192,7 +192,7 @@ window.__ModuleLoader__.load({
               if (alive) { setData(null); setError(null) }
               return
             }
-            var url = '/api/mission-state?sessionId=' + encodeURIComponent(sid)
+            var url = '/api/mission-state-session?sessionId=' + encodeURIComponent(sid)
             if (cwd !== '') url += '&cwd=' + encodeURIComponent(cwd)
             fetch(url, { cache: 'no-store' })
               .then(function (r) { return r.json() })
@@ -225,15 +225,19 @@ window.__ModuleLoader__.load({
           var posKey = 'dsh-mission-positions:' + mission.id
           var viewKey = 'dsh-mission-view:' + mission.id
           var hiddenKey = 'dsh-mission-hidden:' + mission.id
+          var manualKey = 'dsh-mission-manual:' + mission.id
           try {
             var savedHidden = window.localStorage.getItem(hiddenKey)
             if (savedHidden) setHiddenIds(JSON.parse(savedHidden))
           } catch (e) {}
           try {
-            var savedPos = window.localStorage.getItem(posKey)
-            if (savedPos) {
-              setPositions(JSON.parse(savedPos))
-              return
+            var manual = window.localStorage.getItem(manualKey)
+            if (manual === '1') {
+              var savedPos = window.localStorage.getItem(posKey)
+              if (savedPos) {
+                setPositions(JSON.parse(savedPos))
+                return
+              }
             }
           } catch (e) {}
           try {
@@ -295,7 +299,10 @@ window.__ModuleLoader__.load({
             next[d.id] = { x: nx, y: ny }
             setPositions(next)
             try {
-              if (mission) window.localStorage.setItem('dsh-mission-positions:' + mission.id, JSON.stringify(next))
+              if (mission) {
+                window.localStorage.setItem('dsh-mission-positions:' + mission.id, JSON.stringify(next))
+                window.localStorage.setItem('dsh-mission-manual:' + mission.id, '1')
+              }
             } catch (e) {}
           } else if (panRef.current) {
             var p = panRef.current
@@ -326,6 +333,19 @@ window.__ModuleLoader__.load({
           setView({ x: view.x, y: view.y, scale: newScale })
         }
         function resetView() { setView({ x: 0, y: 0, scale: 1 }) }
+        function resetLayout() {
+          var initial = {}
+          var lp = computeLayout(visibleTasks).positions
+          Object.keys(lp).forEach(function (id) { initial[id] = { x: lp[id].x, y: lp[id].y } })
+          setPositions(initial)
+          try {
+            if (mission) {
+              window.localStorage.removeItem('dsh-mission-positions:' + mission.id)
+              window.localStorage.removeItem('dsh-mission-manual:' + mission.id)
+            }
+          } catch (e) {}
+          setView({ x: 0, y: 0, scale: 1 })
+        }
         function deleteTask(task) {
           var next = Object.assign({}, hiddenIds)
           next[task.id] = true
@@ -381,74 +401,6 @@ window.__ModuleLoader__.load({
               key: d + '->' + t.id,
             }))
           })
-        })
-
-        // 长依赖跳过隐藏中间节点：把被隐藏节点之前的可见上游以虚线连到下游
-        var allById = {}
-        tasks.forEach(function (t) { allById[t.id] = t })
-        var visibleSet = {}
-        visibleTasks.forEach(function (t) { visibleSet[t.id] = true })
-        function visibleAncestors(id, seen) {
-          if (seen[id]) return []
-          seen[id] = true
-          var t = allById[id]
-          if (!t) return []
-          var out = []
-          ;(t.dependencies || []).forEach(function (dep) {
-            if (visibleSet[dep]) {
-              if (out.indexOf(dep) < 0) out.push(dep)
-            } else if (allById[dep]) {
-              visibleAncestors(dep, seen).forEach(function (a) {
-                if (out.indexOf(a) < 0) out.push(a)
-              })
-            }
-          })
-          return out
-        }
-        visibleTasks.forEach(function (t) {
-          visibleAncestors(t.id, {}).forEach(function (a) {
-            if ((t.dependencies || []).indexOf(a) >= 0) return
-            var p1 = currentPos(a)
-            var p2 = currentPos(t.id)
-            if (!p1 || !p2) return
-            var x1 = p1.x + layout.nodeW / 2
-            var y1 = p1.y + layout.nodeH
-            var x2 = p2.x + layout.nodeW / 2
-            var y2 = p2.y
-            var my = (y1 + y2) / 2
-            edges.push(React.createElement('path', {
-              d: 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2,
-              fill: 'none',
-              stroke: 'var(--dsw-alias-state-warn-primary)',
-              strokeWidth: 1.2,
-              strokeDasharray: '3 4',
-              markerEnd: 'url(#dsh-mission-arrow)',
-              key: 'long:' + a + '->' + t.id,
-            }))
-          })
-        })
-
-        // 替换/修复关系：虚线连接被替换的旧任务和它的替代任务
-        tasks.forEach(function (t) {
-          if (!t.replaces || !layout.byId[t.replaces]) return
-          if ((t.dependencies || []).indexOf(t.replaces) >= 0) return
-          var p1 = currentPos(t.replaces)
-          var p2 = currentPos(t.id)
-          if (!p1 || !p2) return
-          var x1 = p1.x + layout.nodeW / 2
-          var y1 = p1.y + layout.nodeH
-          var x2 = p2.x + layout.nodeW / 2
-          var y2 = p2.y
-          var my = (y1 + y2) / 2
-          edges.push(React.createElement('path', {
-            d: 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2,
-            fill: 'none',
-            stroke: 'var(--dsw-alias-state-warn-primary)',
-            strokeWidth: 1.3,
-            strokeDasharray: '5 4',
-            markerEnd: 'url(#dsh-mission-arrow)',
-            key: 'replace:' + t.replaces + '->' + t.id,
-          }))
         })
 
         var nodes = visibleTasks.map(function (t) {
@@ -597,6 +549,7 @@ window.__ModuleLoader__.load({
                 React.createElement('button', { className: 'dsh-canvas-btn', onClick: function () { zoomBy(1.2) }, 'aria-label': '放大' }, '+'),
                 React.createElement('button', { className: 'dsh-canvas-btn', onClick: function () { zoomBy(1 / 1.2) }, 'aria-label': '缩小' }, '−'),
                 React.createElement('button', { className: 'dsh-canvas-btn', onClick: resetView, 'aria-label': '复位' }, '⟲'),
+                React.createElement('button', { className: 'dsh-canvas-btn', onClick: resetLayout, 'aria-label': '重置布局', title: '重置节点布局' }, '⌗'),
               ),
               React.createElement('svg', { viewBox: view.x + ' ' + view.y + ' ' + (layout.width / view.scale) + ' ' + (layout.height / view.scale), preserveAspectRatio: 'xMidYMid meet' },
                 React.createElement('defs', null,
@@ -604,7 +557,7 @@ window.__ModuleLoader__.load({
                     id: 'dsh-mission-arrow',
                     markerWidth: 8,
                     markerHeight: 8,
-                    refX: 7,
+                    refX: 8,
                     refY: 4,
                     orient: 'auto',
                     markerUnits: 'strokeWidth',
