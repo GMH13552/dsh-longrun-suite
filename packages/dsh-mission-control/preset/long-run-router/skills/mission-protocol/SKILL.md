@@ -252,21 +252,22 @@ For any long-running remote job (training, eval, upload, experiment):
   DAG tasks may be claimed by multiple workers concurrently, but dependencies
   remain gated by accepted tasks.
 
-### Parallel ready batch (hard rule)
+### Parallel ready batch (strong preference)
 
-- After `mission_ready`, if the ready queue width is **>= 2**, treat it as a
-  parallel batch. Claim every ready task in the same turn and dispatch them to
-  independent role subagents **in parallel** (separate subagents / background
-  jobs / a `workflow`). Do **not** finish one before starting the others.
-- Serialize only when:
+- After `mission_ready`, if the ready queue width is **>= 2**, try to treat it
+  as a parallel batch: preferably claim all ready tasks in the same turn and
+  dispatch them concurrently to independent role subagents (separate
+  subagents / background jobs / a `workflow`). Avoid finishing one before
+  starting the others when practical.
+- Serialize when:
   - tasks genuinely mutate the same shared resource,
-  - the same worker must do them sequentially by design, or
-  - a lease/resource limit forces serial execution.
-- Each worker must own its task id and its evidence paths; no two workers may
-  write the same evidence path. Coordination goes through
+  - the same worker should do them sequentially by design, or
+  - a lease/resource limit makes serial execution necessary.
+- Workers should own their task ids and evidence paths; no two workers should
+  write the same evidence path. Prefer coordination through
   `mission_publish_artifact` / `mission_consume_artifacts`, not chat.
 - If the model cannot issue all dispatch calls in one assistant step, use
-  background subagents or a `workflow` so they actually run concurrently.
+  background subagents or a `workflow` so they can still run concurrently.
 
 ### Blind review / calibration gate (before final audit)
 
