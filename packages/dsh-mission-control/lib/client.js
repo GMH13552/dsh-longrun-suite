@@ -159,6 +159,9 @@ window.__ModuleLoader__.load({
         var chosenState = React.useState(null)
         var chosen = chosenState[0]
         var setChosen = chosenState[1]
+        var hideRejectedState = React.useState(true)
+        var hideRejected = hideRejectedState[0]
+        var setHideRejected = hideRejectedState[1]
         var viewState = React.useState({ x: 0, y: 0, scale: 1 })
         var view = viewState[0]
         var setView = viewState[1]
@@ -215,18 +218,38 @@ window.__ModuleLoader__.load({
 
         React.useEffect(function () {
           if (!mission || positions !== null) return
+          var posKey = 'dsh-mission-positions:' + mission.id
+          var viewKey = 'dsh-mission-view:' + mission.id
+          try {
+            var savedPos = window.localStorage.getItem(posKey)
+            if (savedPos) {
+              setPositions(JSON.parse(savedPos))
+              return
+            }
+          } catch (e) {}
+          try {
+            var savedView = window.localStorage.getItem(viewKey)
+            if (savedView) setView(JSON.parse(savedView))
+          } catch (e) {}
           var initial = {}
           var lp = computeLayout(mission.tasks || []).positions
           Object.keys(lp).forEach(function (id) { initial[id] = { x: lp[id].x, y: lp[id].y } })
           setPositions(initial)
         }, [mission, positions])
 
+        React.useEffect(function () {
+          if (!mission) return
+          var viewKey = 'dsh-mission-view:' + mission.id
+          try { window.localStorage.setItem(viewKey, JSON.stringify(view)) } catch (e) {}
+        }, [mission, view])
+
         if (!mission) {
           return React.createElement('div', { className: 'dsh-mission-view' }, React.createElement('div', { className: 'dsh-mission-empty' }, error || '\u5f53\u524d\u4f1a\u8bdd\u6ca1\u6709\u4efb\u52a1\uff08\u5728\u5de5\u4f5c\u533a\u542f\u52a8 mission_start \u540e\u53ef\u89c6\u5316\uff09'))
         }
 
         var tasks = mission.tasks || []
-        var layout = computeLayout(tasks)
+        var visibleTasks = hideRejected ? tasks.filter(function (t) { return t.status !== 'rejected' }) : tasks
+        var layout = computeLayout(visibleTasks)
         function currentPos(id) {
           return positions && positions[id] ? positions[id] : layout.positions[id]
         }
@@ -255,6 +278,9 @@ window.__ModuleLoader__.load({
             Object.keys(positions || {}).forEach(function (id) { next[id] = positions[id] })
             next[d.id] = { x: nx, y: ny }
             setPositions(next)
+            try {
+              if (mission) window.localStorage.setItem('dsh-mission-positions:' + mission.id, JSON.stringify(next))
+            } catch (e) {}
           } else if (panRef.current) {
             var p = panRef.current
             setView({ x: p.x - (e.clientX - p.startX) * ux, y: p.y - (e.clientY - p.startY) * uy, scale: scale })
@@ -304,7 +330,7 @@ window.__ModuleLoader__.load({
         var hasFinalReview = tasks.some(function (t) { return t.assignee === 'final_reviewer' })
 
         var edges = []
-        tasks.forEach(function (t) {
+        visibleTasks.forEach(function (t) {
           (t.dependencies || []).forEach(function (d) {
             var from = layout.byId[d]
             var p1 = from && currentPos(from.id)
@@ -326,7 +352,7 @@ window.__ModuleLoader__.load({
           })
         })
 
-        var nodes = tasks.map(function (t) {
+        var nodes = visibleTasks.map(function (t) {
           var p = currentPos(t.id)
           if (!p) return null
           return React.createElement('foreignObject', {
@@ -440,7 +466,14 @@ window.__ModuleLoader__.load({
               React.createElement('span', { className: 'dsh-mission-pill' }, '黑板 ' + artifacts.length),
               wiki.exists ? React.createElement('span', { className: 'dsh-mission-pill' }, '记忆库 ' + (wiki.pages || 0)) : null,
             ),
-            React.createElement('div', { className: 'dsh-mission-line1' }, statPills),
+            React.createElement('div', { className: 'dsh-mission-line1' },
+              statPills,
+              React.createElement('button', {
+                className: 'dsh-mission-pill',
+                style: { cursor: 'pointer' },
+                onClick: function () { setHideRejected(!hideRejected) },
+              }, hideRejected ? ('显示已拒绝 ' + tasks.filter(function (t) { return t.status === 'rejected' }).length) : '隐藏已拒绝'),
+            ),
           ),
           React.createElement('div', { className: 'dsh-mission-main' },
             React.createElement('div', {
