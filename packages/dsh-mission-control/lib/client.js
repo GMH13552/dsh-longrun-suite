@@ -462,8 +462,7 @@ window.__ModuleLoader__.load({
           },
             React.createElement('div', {
               className: 'dsh-node ' + nodeClass(t.status),
-              onMouseEnter: function () { setActive(t) },
-              onMouseLeave: function () { setActive(null) },
+              title: t.title,
               onMouseDown: function (e) { startNodeDrag(e, t) },
               onClick: function () { setChosen(t) },
             },
@@ -474,7 +473,7 @@ window.__ModuleLoader__.load({
           )
         })
 
-        var current = active || chosen
+        var current = chosen
         var side = null
         if (current) {
           var task = current
