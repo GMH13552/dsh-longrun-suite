@@ -37,6 +37,10 @@ window.__ModuleLoader__.load({
       '.dsh-node-accepted{border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 8%,transparent);}',
       '.dsh-node-rejected{border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 55%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 8%,transparent);}',
       '.dsh-mission-empty{padding:48px 20px;text-align:center;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:1.6;}',
+      '.dsh-canvas-controls{position:absolute;top:10px;right:12px;display:flex;gap:4px;z-index:2;}',
+      '.dsh-canvas-btn{min-width:26px;height:26px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:14px;line-height:24px;text-align:center;cursor:pointer;}',
+      '.dsh-canvas-btn:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);}',
+      '.dsh-node{cursor:move;}',
     ].join('')
 
     var CSS_ID = 'dsh-mission-control:graph2'
@@ -155,6 +159,15 @@ window.__ModuleLoader__.load({
         var chosenState = React.useState(null)
         var chosen = chosenState[0]
         var setChosen = chosenState[1]
+        var viewState = React.useState({ x: 0, y: 0, scale: 1 })
+        var view = viewState[0]
+        var setView = viewState[1]
+        var posState = React.useState(null)
+        var positions = posState[0]
+        var setPositions = posState[1]
+        var canvasRef = React.useRef(null)
+        var panRef = React.useRef(null)
+        var dragRef = React.useRef(null)
 
         React.useEffect(function () {
           var alive = true
@@ -199,12 +212,78 @@ window.__ModuleLoader__.load({
         }, [])
 
         var mission = data && data.mission ? data.mission : null
+
+        React.useEffect(function () {
+          if (!mission || positions !== null) return
+          var initial = {}
+          var lp = computeLayout(mission.tasks || []).positions
+          Object.keys(lp).forEach(function (id) { initial[id] = { x: lp[id].x, y: lp[id].y } })
+          setPositions(initial)
+        }, [mission, positions])
+
         if (!mission) {
           return React.createElement('div', { className: 'dsh-mission-view' }, React.createElement('div', { className: 'dsh-mission-empty' }, error || '\u5f53\u524d\u4f1a\u8bdd\u6ca1\u6709\u4efb\u52a1\uff08\u5728\u5de5\u4f5c\u533a\u542f\u52a8 mission_start \u540e\u53ef\u89c6\u5316\uff09'))
         }
 
         var tasks = mission.tasks || []
         var layout = computeLayout(tasks)
+        function currentPos(id) {
+          return positions && positions[id] ? positions[id] : layout.positions[id]
+        }
+        function startNodeDrag(e, task) {
+          e.preventDefault()
+          e.stopPropagation()
+          var p = currentPos(task.id)
+          dragRef.current = { id: task.id, startX: e.clientX, startY: e.clientY, origX: p.x, origY: p.y }
+        }
+        function canvasDown(e) {
+          if (e.target && e.target.closest && e.target.closest('.dsh-node')) return
+          panRef.current = { startX: e.clientX, startY: e.clientY, x: view.x, y: view.y }
+          e.preventDefault()
+        }
+        function canvasMove(e) {
+          var rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null
+          if (!rect) return
+          var scale = view.scale
+          var ux = layout.width / scale / rect.width
+          var uy = layout.height / scale / rect.height
+          if (dragRef.current) {
+            var d = dragRef.current
+            var nx = d.origX + (e.clientX - d.startX) * ux
+            var ny = d.origY + (e.clientY - d.startY) * uy
+            var next = {}
+            Object.keys(positions || {}).forEach(function (id) { next[id] = positions[id] })
+            next[d.id] = { x: nx, y: ny }
+            setPositions(next)
+          } else if (panRef.current) {
+            var p = panRef.current
+            setView({ x: p.x - (e.clientX - p.startX) * ux, y: p.y - (e.clientY - p.startY) * uy, scale: scale })
+          }
+        }
+        function canvasUp() {
+          panRef.current = null
+          dragRef.current = null
+        }
+        function canvasWheel(e) {
+          e.preventDefault()
+          var rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null
+          if (!rect) return
+          var oldScale = view.scale
+          var factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+          var newScale = Math.max(0.4, Math.min(3, oldScale * factor))
+          var fx = (e.clientX - rect.left) / rect.width
+          var fy = (e.clientY - rect.top) / rect.height
+          var wx = view.x + fx * (layout.width / oldScale)
+          var wy = view.y + fy * (layout.height / oldScale)
+          setView({ x: wx - fx * (layout.width / newScale), y: wy - fy * (layout.height / newScale), scale: newScale })
+        }
+        function zoomBy(f) {
+          var oldScale = view.scale
+          var newScale = Math.max(0.4, Math.min(3, oldScale * f))
+          setView({ x: view.x, y: view.y, scale: newScale })
+        }
+        function resetView() { setView({ x: 0, y: 0, scale: 1 }) }
+
         var counts = mission.counts || {}
         var statItems = [
           ['\u5f85\u8ba4\u9886', counts.open || 0],
@@ -228,8 +307,8 @@ window.__ModuleLoader__.load({
         tasks.forEach(function (t) {
           (t.dependencies || []).forEach(function (d) {
             var from = layout.byId[d]
-            var p1 = from && layout.positions[from.id]
-            var p2 = layout.positions[t.id]
+            var p1 = from && currentPos(from.id)
+            var p2 = currentPos(t.id)
             if (!p1 || !p2) return
             var x1 = p1.x + layout.nodeW / 2
             var y1 = p1.y + layout.nodeH
@@ -248,7 +327,7 @@ window.__ModuleLoader__.load({
         })
 
         var nodes = tasks.map(function (t) {
-          var p = layout.positions[t.id]
+          var p = currentPos(t.id)
           if (!p) return null
           return React.createElement('foreignObject', {
             key: t.id,
@@ -261,6 +340,7 @@ window.__ModuleLoader__.load({
               className: 'dsh-node ' + nodeClass(t.status),
               onMouseEnter: function () { setActive(t) },
               onMouseLeave: function () { setActive(null) },
+              onMouseDown: function (e) { startNodeDrag(e, t) },
               onClick: function () { setChosen(t) },
             },
               React.createElement('span', { className: 'dsh-node-dot', style: { background: dotColor(t.status) } }),
@@ -363,8 +443,21 @@ window.__ModuleLoader__.load({
             React.createElement('div', { className: 'dsh-mission-line1' }, statPills),
           ),
           React.createElement('div', { className: 'dsh-mission-main' },
-            React.createElement('div', { className: 'dsh-mission-canvas' },
-              React.createElement('svg', { viewBox: '0 0 ' + layout.width + ' ' + layout.height, preserveAspectRatio: 'xMidYMid meet' },
+            React.createElement('div', {
+              className: 'dsh-mission-canvas',
+              ref: canvasRef,
+              onMouseDown: canvasDown,
+              onMouseMove: canvasMove,
+              onMouseUp: canvasUp,
+              onMouseLeave: canvasUp,
+              onWheel: canvasWheel,
+            },
+              React.createElement('div', { className: 'dsh-canvas-controls' },
+                React.createElement('button', { className: 'dsh-canvas-btn', onClick: function () { zoomBy(1.2) }, 'aria-label': '放大' }, '+'),
+                React.createElement('button', { className: 'dsh-canvas-btn', onClick: function () { zoomBy(1 / 1.2) }, 'aria-label': '缩小' }, '−'),
+                React.createElement('button', { className: 'dsh-canvas-btn', onClick: resetView, 'aria-label': '复位' }, '⟲'),
+              ),
+              React.createElement('svg', { viewBox: view.x + ' ' + view.y + ' ' + (layout.width / view.scale) + ' ' + (layout.height / view.scale), preserveAspectRatio: 'xMidYMid meet' },
                 React.createElement('defs', null,
                   React.createElement('marker', {
                     id: 'dsh-mission-arrow',
