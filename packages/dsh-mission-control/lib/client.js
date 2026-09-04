@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     var React = require('react')
 
     var CSS = [
-      '.dsh-mission-view{height:100%;display:flex;flex-direction:column;box-sizing:border-box;background:var(--dsw-alias-bg-base);}',
+      '.dsh-mission-view{height:100%;display:flex;flex-direction:column;box-sizing:border-box;background:var(--dsw-alias-bg-base);overflow:hidden;}',
       '.dsh-mission-topbar{display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1);}',
       '.dsh-mission-line1{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}',
       '.dsh-mission-title{font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
@@ -19,7 +19,7 @@ window.__ModuleLoader__.load({
       '.dsh-mission-pill-rejected{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 12%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 40%,transparent);color:var(--dsw-alias-state-error-primary);}',
       '.dsh-mission-sub{font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.4;word-break:break-word;}',
       '.dsh-mission-main{flex:1;display:flex;min-height:0;}',
-      '.dsh-mission-canvas{flex:1;min-width:0;position:relative;overflow:hidden;background:var(--dsw-alias-bg-base);}',
+      '.dsh-mission-canvas{flex:1;min-width:0;position:relative;overflow:hidden;background:var(--dsw-alias-bg-base);overscroll-behavior:none;touch-action:none;}',
       '.dsh-mission-canvas svg{display:block;width:100%;height:100%;}',
       '.dsh-mission-side{width:300px;min-width:260px;max-width:340px;box-sizing:border-box;border-left:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}',
       '.dsh-side-section{display:flex;flex-direction:column;gap:5px;}',
@@ -162,6 +162,9 @@ window.__ModuleLoader__.load({
         var hideRejectedState = React.useState(true)
         var hideRejected = hideRejectedState[0]
         var setHideRejected = hideRejectedState[1]
+        var hiddenState = React.useState({})
+        var hiddenIds = hiddenState[0]
+        var setHiddenIds = hiddenState[1]
         var viewState = React.useState({ x: 0, y: 0, scale: 1 })
         var view = viewState[0]
         var setView = viewState[1]
@@ -220,6 +223,11 @@ window.__ModuleLoader__.load({
           if (!mission || positions !== null) return
           var posKey = 'dsh-mission-positions:' + mission.id
           var viewKey = 'dsh-mission-view:' + mission.id
+          var hiddenKey = 'dsh-mission-hidden:' + mission.id
+          try {
+            var savedHidden = window.localStorage.getItem(hiddenKey)
+            if (savedHidden) setHiddenIds(JSON.parse(savedHidden))
+          } catch (e) {}
           try {
             var savedPos = window.localStorage.getItem(posKey)
             if (savedPos) {
@@ -248,7 +256,7 @@ window.__ModuleLoader__.load({
         }
 
         var tasks = mission.tasks || []
-        var visibleTasks = hideRejected ? tasks.filter(function (t) { return t.status !== 'rejected' }) : tasks
+        var visibleTasks = tasks.filter(function (t) { return !hiddenIds[t.id] && (hideRejected ? t.status !== 'rejected' : true) })
         var layout = computeLayout(visibleTasks)
         function currentPos(id) {
           return positions && positions[id] ? positions[id] : layout.positions[id]
@@ -292,6 +300,7 @@ window.__ModuleLoader__.load({
         }
         function canvasWheel(e) {
           e.preventDefault()
+          e.stopPropagation()
           var rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null
           if (!rect) return
           var oldScale = view.scale
@@ -309,6 +318,20 @@ window.__ModuleLoader__.load({
           setView({ x: view.x, y: view.y, scale: newScale })
         }
         function resetView() { setView({ x: 0, y: 0, scale: 1 }) }
+        function deleteTask(task) {
+          var next = Object.assign({}, hiddenIds)
+          next[task.id] = true
+          setHiddenIds(next)
+          try { if (mission) window.localStorage.setItem('dsh-mission-hidden:' + mission.id, JSON.stringify(next)) } catch (e) {}
+          if (current && current.id === task.id) {
+            setChosen(null)
+            setActive(null)
+          }
+        }
+        function restoreHidden() {
+          setHiddenIds({})
+          try { if (mission) window.localStorage.removeItem('dsh-mission-hidden:' + mission.id) } catch (e) {}
+        }
 
         var counts = mission.counts || {}
         var statItems = [
@@ -421,6 +444,11 @@ window.__ModuleLoader__.load({
               React.createElement('div', { className: 'dsh-side-label' }, '封锁'),
               React.createElement('div', { className: 'dsh-side-empty' }, task.blockedReason || 'claim 次数超限'),
             ) : null,
+            task.status === 'rejected' ? React.createElement('button', {
+              className: 'dsh-canvas-btn',
+              style: { alignSelf: 'flex-start' },
+              onClick: function () { deleteTask(task) },
+            }, '从图中删除') : null,
           )
         } else {
           side = React.createElement('div', { className: 'dsh-mission-side' },
@@ -473,6 +501,11 @@ window.__ModuleLoader__.load({
                 style: { cursor: 'pointer' },
                 onClick: function () { setHideRejected(!hideRejected) },
               }, hideRejected ? ('显示已拒绝 ' + tasks.filter(function (t) { return t.status === 'rejected' }).length) : '隐藏已拒绝'),
+              Object.keys(hiddenIds).length > 0 ? React.createElement('button', {
+                className: 'dsh-mission-pill',
+                style: { cursor: 'pointer' },
+                onClick: restoreHidden,
+              }, '已删除 ' + Object.keys(hiddenIds).length + ' · 恢复') : null,
             ),
           ),
           React.createElement('div', { className: 'dsh-mission-main' },
