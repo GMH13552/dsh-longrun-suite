@@ -159,7 +159,7 @@ window.__ModuleLoader__.load({
         var chosenState = React.useState(null)
         var chosen = chosenState[0]
         var setChosen = chosenState[1]
-        var hideRejectedState = React.useState(true)
+        var hideRejectedState = React.useState(false)
         var hideRejected = hideRejectedState[0]
         var setHideRejected = hideRejectedState[1]
         var hiddenState = React.useState({})
@@ -373,6 +373,29 @@ window.__ModuleLoader__.load({
               key: d + '->' + t.id,
             }))
           })
+        })
+
+        // 替换/修复关系：虚线连接被替换的旧任务和它的替代任务
+        tasks.forEach(function (t) {
+          if (!t.replaces || !layout.byId[t.replaces]) return
+          if ((t.dependencies || []).indexOf(t.replaces) >= 0) return
+          var p1 = currentPos(t.replaces)
+          var p2 = currentPos(t.id)
+          if (!p1 || !p2) return
+          var x1 = p1.x + layout.nodeW / 2
+          var y1 = p1.y + layout.nodeH
+          var x2 = p2.x + layout.nodeW / 2
+          var y2 = p2.y
+          var my = (y1 + y2) / 2
+          edges.push(React.createElement('path', {
+            d: 'M ' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + my + ', ' + x2 + ' ' + my + ', ' + x2 + ' ' + y2,
+            fill: 'none',
+            stroke: 'var(--dsw-alias-state-warn-primary)',
+            strokeWidth: 1.3,
+            strokeDasharray: '5 4',
+            markerEnd: 'url(#dsh-mission-arrow)',
+            key: 'replace:' + t.replaces + '->' + t.id,
+          }))
         })
 
         var nodes = visibleTasks.map(function (t) {
