@@ -146,7 +146,8 @@ window.__ModuleLoader__.load({
     exports.apply = function (ctx) {
       ensureStyles()
 
-      function MissionView() {
+      function MissionView(props) {
+        var sessionId = props && props.sessionId
         var dataState = React.useState(null)
         var data = dataState[0]
         var setData = dataState[1]
@@ -178,20 +179,20 @@ window.__ModuleLoader__.load({
         React.useEffect(function () {
           var alive = true
           function poll() {
-            var sessionId
+            var sid = sessionId
             var cwd = ''
             try {
               var snap = ctx.sessions.list.getSnapshot()
-              sessionId = snap.current
-              if (sessionId && snap.byId && snap.byId[sessionId] && snap.byId[sessionId].cwd) cwd = snap.byId[sessionId].cwd
+              if (!sid) sid = snap.current
+              if (sid && snap.byId && snap.byId[sid] && snap.byId[sid].cwd) cwd = snap.byId[sid].cwd
             } catch (e) {
-              sessionId = undefined
+              sid = sessionId
             }
-            if (!sessionId) {
+            if (!sid) {
               if (alive) { setData(null); setError(null) }
               return
             }
-            var url = '/api/mission-state?sessionId=' + encodeURIComponent(sessionId)
+            var url = '/api/mission-state?sessionId=' + encodeURIComponent(sid)
             if (cwd !== '') url += '&cwd=' + encodeURIComponent(cwd)
             fetch(url, { cache: 'no-store' })
               .then(function (r) { return r.json() })
@@ -215,7 +216,7 @@ window.__ModuleLoader__.load({
             stop = function () { window.clearInterval(id) }
           }
           return function () { alive = false; if (typeof stop === 'function') stop() }
-        }, [])
+        }, [sessionId])
 
         var mission = data && data.mission ? data.mission : null
 
@@ -623,7 +624,7 @@ window.__ModuleLoader__.load({
       ctx.slots.inject('conversation.view', function () {
         return ctx.slots.register(
           { name: 'conversation.view', id: 'mission', order: 5, label: '\u4efb\u52a1' },
-          function () { return React.createElement(MissionView, null) },
+          function (props) { return React.createElement(MissionView, props) },
         )
       })
     }
