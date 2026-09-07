@@ -127,6 +127,7 @@ export function addTask(mission, task) {
     assignee: task.assignee ? String(task.assignee).trim() : null,
     dependencies: Array.isArray(task.dependencies) ? task.dependencies.map(String) : [],
     capabilities: Array.isArray(task.capabilities) ? task.capabilities.map(String) : [],
+    requiredArtifacts: Array.isArray(task.requiredArtifacts) ? task.requiredArtifacts.map(String) : [],
     scrutinyLevel: ['high', 'standard', 'low'].includes(task.scrutinyLevel) ? task.scrutinyLevel : 'standard',
     acceptance: task.acceptance.map(String),
     verificationPlan,
@@ -222,6 +223,13 @@ export function reclaimExpiredLeases(mission) {
   return reclaimed
 }
 
+function missingRequiredArtifacts(mission, task) {
+  const required = Array.isArray(task.requiredArtifacts) ? task.requiredArtifacts : []
+  if (required.length === 0) return []
+  const present = new Set((mission.artifacts || []).map((a) => a.type))
+  return required.filter((type) => !present.has(type))
+}
+
 function capabilityGap(task, workerCapabilities) {
   const caps = Array.isArray(task.capabilities) ? task.capabilities : []
   if (caps.length === 0) return null
@@ -244,6 +252,10 @@ export function claimTask(mission, taskId, assignee, options = {}) {
   const unsatisfied = unsatisfiedDependencies(mission, task)
   if (unsatisfied.length > 0) {
     throw new Error(`task ${taskId} dependencies not accepted: ${unsatisfied.join(', ')}`)
+  }
+  const missingArtifacts = missingRequiredArtifacts(mission, task)
+  if (missingArtifacts.length > 0) {
+    throw new Error(`task ${taskId} missing required artifacts on blackboard: ${missingArtifacts.join(', ')}`)
   }
   if (task.assignee && assignee && assignee !== task.assignee) {
     throw new Error(`task ${taskId} was planned for assignee "${task.assignee}", cannot claim as "${assignee}"`)
@@ -582,6 +594,7 @@ export function summarizeTasks(mission) {
       status: t.status,
       assignee: t.assignee,
       dependencies: t.dependencies,
+      requiredArtifacts: t.requiredArtifacts || [],
       replaces: t.replaces || null,
       supersededBy: t.supersededBy || null,
       acceptance: t.acceptance,

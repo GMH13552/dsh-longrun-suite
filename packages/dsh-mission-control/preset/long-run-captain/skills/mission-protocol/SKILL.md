@@ -252,6 +252,24 @@ For any long-running remote job (training, eval, upload, experiment):
   DAG tasks may be claimed by multiple workers concurrently, but dependencies
   remain gated by accepted tasks.
 
+### Research → Engineering handoff (value bridge)
+
+- Research/design tasks must publish their valuable outputs to the blackboard
+  before acceptance, typically as typed artifacts:
+  - `research-brief` — findings, sources, constraints, open questions
+  - `design` / `spec` — interfaces, data formats, architectural decisions
+  - `method-card` / `method-file` — chosen method and why
+- Engineering tasks that consume research should declare
+  `requiredArtifacts: ["research-brief", "design", "method-card"]` in
+  `mission_add_tasks`; the task will not become claimable until those artifact
+  types exist.
+- Before starting implementation, the engineer MUST call `mission_context`
+  (or at least `mission_consume_artifacts`) and reference the actual artifact
+  paths in the dispatch prompt/evidence.
+- If an engineer says it did not need any research artifact, that is a red
+  flag: go back and check whether the task was truly independent or the
+  handoff was missing.
+
 ### Parallel ready batch (strong preference)
 
 - After `mission_ready`, if the ready queue width is **>= 2**, try to treat it

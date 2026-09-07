@@ -266,6 +266,7 @@ export function apply(ctx) {
               assignee: { type: 'string', description: 'Planned executor role (e.g. researcher / engineer / reviewer / final_reviewer). Default substantive work to a subagent; captain only for bookkeeping/synthesis.' },
               kind: { type: 'string', enum: ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination'], description: 'Generic task kind. The plugin rejects captain assignee for research/engineering/review/deliverable-style.' },
               replaces: { type: 'string', description: 'Optional id of a rejected task this new task supersedes. The rejected task will be marked superseded and can no longer block completion.' },
+              requiredArtifacts: { type: 'array', items: { type: 'string' }, description: 'Optional artifact types that must already exist on the blackboard before this task can be claimed (e.g. research-brief, design, dataset, method-card). This is how research outputs gate downstream engineering.' },
               verificationPlan: {
                 type: 'object',
                 description: 'Domain-specific verification plan. Suggested fields: kind, requiredEvidence[], checkCommand, reviewerInstruction. The framework treats this as opaque data.',
@@ -678,10 +679,17 @@ export function apply(ctx) {
       const mission = requireMissionId(args, cwd, exec)
       const have = new Set(Array.isArray(args.capabilities) ? args.capabilities : [])
       const ready = []
+      const blockedByArtifacts = []
+      const presentTypes = new Set((mission.artifacts || []).map((a) => a.type))
       for (const task of Object.values(mission.tasks)) {
         if (task.status !== 'open' || task.leaseBlocked) continue
         const depsOk = (task.dependencies || []).every((d) => mission.tasks[d]?.status === 'accepted')
         if (!depsOk) continue
+        const missingArtifacts = (task.requiredArtifacts || []).filter((type) => !presentTypes.has(type))
+        if (missingArtifacts.length > 0) {
+          blockedByArtifacts.push(`${task.id} missing=[${missingArtifacts.join(', ')}]`)
+          continue
+        }
         const caps = task.capabilities || []
         if (caps.length > 0 && have.size > 0 && !caps.every((c) => have.has(c))) continue
         ready.push({
@@ -691,11 +699,13 @@ export function apply(ctx) {
           capabilities: caps,
           title: task.title,
           dependencies: task.dependencies || [],
+          requiredArtifacts: task.requiredArtifacts || [],
         })
       }
-      if (ready.length === 0) return 'Ready queue is empty.'
+      const blockedText = blockedByArtifacts.length > 0 ? `\n等待上游产物（不能认领）:\n${blockedByArtifacts.map((b) => `- ${b}`).join('\n')}` : ''
+      if (ready.length === 0) return `Ready queue is empty.${blockedText}`
       const lines = ready.map((t) => `- ${t.id} [${t.kind || '?'}] ${t.title}${t.capabilities.length ? ` cap=${t.capabilities.join(',')}` : ''}${t.assignee ? ` assignee=${t.assignee}` : ''}`)
-      return `Ready queue width=${ready.length}:\n${lines.join('\n')}`
+      return `Ready queue width=${ready.length}:\n${lines.join('\n')}${blockedText}`
     },
   })
 
@@ -762,6 +772,60 @@ export function apply(ctx) {
       )
       if (list.length === 0) return 'No matching artifacts on the blackboard.'
       return list.map((a) => `${a.id} | ${a.type} | task=${a.taskId} | ${a.path}${a.summary ? ` | ${a.summary}` : ''}`).join('\n')
+    },
+  })
+
+  // ── mission_context: cross-role handoff pack ─────────────────────────────
+  ctx.tools.register({
+    name: 'mission_context',
+    description: 'Build a compact cross-role context pack: mission goal/success criteria, task DAG summary, blackboard artifacts (optionally filtered by type), and latest .memory summaries. Use this to hand research/design findings to engineers or other workers instead of relying on chat.',
+    parameters: {
+      type: 'object',
+      properties: {
+        role: { type: 'string', description: 'Optional role filter label (researcher/engineer/reviewer).' },
+        task_id: { type: 'string', description: 'Optional task id to include its full acceptance criteria.' },
+        artifact_types: { type: 'array', items: { type: 'string' }, description: 'Optional artifact type whitelist, e.g. research-brief, design, dataset.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('mission_context result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd, exec)
+      const artifacts = ensureArtifacts(mission)
+      const typeFilter = Array.isArray(args.artifact_types) ? new Set(args.artifact_types.map(String)) : null
+      const list = artifacts.filter((a) => !typeFilter || typeFilter.has(a.type))
+      const lines = [
+        `Mission context pack for ${mission.id} [${mission.status}]`,
+        `Goal: ${(mission.goals || [])[0] || ''}`,
+        `Success criteria:`,
+      ]
+      for (const c of mission.successCriteria || []) lines.push(`- ${c}`)
+      lines.push('', `Tasks (${Object.keys(mission.tasks || {}).length}):`)
+      for (const t of Object.values(mission.tasks || {})) {
+        lines.push(`- ${t.id} [${t.status}] ${t.kind || ''} ${t.title}${t.assignee ? ` assignee=${t.assignee}` : ''}${(t.requiredArtifacts || []).length ? ` needs=${t.requiredArtifacts.join(',')}` : ''}`)
+      }
+      lines.push('', `Blackboard artifacts (${list.length}):`)
+      if (list.length === 0) lines.push('(none)')
+      else for (const a of list) lines.push(`- ${a.type} | ${a.path} | ${a.summary || ''} | from ${a.taskId}`)
+      if (args.task_id && mission.tasks && mission.tasks[args.task_id]) {
+        const t = mission.tasks[args.task_id]
+        lines.push('', `Focused task ${t.id} acceptance:`)
+        for (const a of t.acceptance || []) lines.push(`- ${a}`)
+      }
+      lines.push('', `Wiki summaries:`)
+      const root = memoryRoot(cwd)
+      if (existsSync(root)) {
+        const files = listMdFiles(root)
+        if (files.length === 0) lines.push('(empty)')
+        else for (const file of files.slice(0, 20)) {
+          const text = readFileSync(file, 'utf8')
+          const first = text.split('\n').slice(0, 6).join(' | ').slice(0, 180)
+          lines.push(`- ${file}\n  ${first}`)
+        }
+      } else lines.push('(no .memory)')
+      return lines.join('\n')
     },
   })
 
@@ -910,7 +974,9 @@ export function apply(ctx) {
       counts.total += 1
       if (counts[task.status] !== undefined) counts[task.status] += 1
       const depsOk = (task.dependencies || []).every((d) => mission.tasks[d]?.status === 'accepted')
-      const isReady = task.status === 'open' && !task.leaseBlocked && depsOk
+      const presentArtifactTypes = new Set((mission.artifacts || []).map((a) => a.type))
+      const artifactsOk = (task.requiredArtifacts || []).every((a) => presentArtifactTypes.has(a))
+      const isReady = task.status === 'open' && !task.leaseBlocked && depsOk && artifactsOk
       if (isReady) ready.push(task.id)
       tasks.push({
         id: task.id,
@@ -935,6 +1001,7 @@ export function apply(ctx) {
         replaces: task.replaces || null,
         supersededBy: task.supersededBy || null,
         requiredEvidence: Array.isArray(task.verificationPlan?.requiredEvidence) ? task.verificationPlan.requiredEvidence : [],
+        requiredArtifacts: task.requiredArtifacts || [],
       })
     }
     function wikiStats() {
