@@ -267,6 +267,7 @@ export function apply(ctx) {
               kind: { type: 'string', enum: ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination'], description: 'Generic task kind. The plugin rejects captain assignee for research/engineering/review/deliverable-style.' },
               replaces: { type: 'string', description: 'Optional id of a rejected task this new task supersedes. The rejected task will be marked superseded and can no longer block completion.' },
               requiredArtifacts: { type: 'array', items: { type: 'string' }, description: 'Optional artifact types that must already exist on the blackboard before this task can be claimed (e.g. research-brief, design, dataset, method-card). This is how research outputs gate downstream engineering.' },
+              guidance: { type: 'string', description: 'Optional detailed dispatch guidance: code-level pointers, file paths, exact functions, constraints, and design notes that must be passed verbatim to the worker in the dispatch prompt. Use this to stop details from being lost between planning/research and implementation.' },
               verificationPlan: {
                 type: 'object',
                 description: 'Domain-specific verification plan. Suggested fields: kind, requiredEvidence[], checkCommand, reviewerInstruction. The framework treats this as opaque data.',
@@ -303,6 +304,7 @@ export function apply(ctx) {
         dependencies: { type: 'array', items: { type: 'string' }, description: 'Optional new dependency task ids.' },
         acceptance: { type: 'array', items: { type: 'string' }, description: 'Optional new acceptance criteria.' },
         verification_plan: { type: 'object', description: 'Optional new verificationPlan.' },
+        guidance: { type: 'string', description: 'Optional replacement dispatch guidance.' },
         kind: { type: 'string', enum: ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination'], description: 'Optional new task kind.' },
         mission_id: { type: 'string', description: 'Optional mission id. Defaults to the latest mission.' },
       },
@@ -319,6 +321,7 @@ export function apply(ctx) {
         acceptance: args.acceptance,
         verificationPlan: args.verification_plan,
         kind: args.kind,
+        guidance: args.guidance,
       })
       saveMission(cwd, mission)
       return `Updated ${args.task_id}\n\n${statusText(mission)}`
@@ -811,8 +814,14 @@ export function apply(ctx) {
       else for (const a of list) lines.push(`- ${a.type} | ${a.path} | ${a.summary || ''} | from ${a.taskId}`)
       if (args.task_id && mission.tasks && mission.tasks[args.task_id]) {
         const t = mission.tasks[args.task_id]
-        lines.push('', `Focused task ${t.id} acceptance:`)
-        for (const a of t.acceptance || []) lines.push(`- ${a}`)
+        lines.push('', `Focused task ${t.id}:`)
+        lines.push(`- assignee: ${t.assignee || '?'}`)
+        lines.push(`- acceptance:`)
+        for (const a of t.acceptance || []) lines.push(`  - ${a}`)
+        if (t.guidance) {
+          lines.push('', `Dispatch guidance (pass nearly verbatim to worker):`)
+          for (const g of String(t.guidance).split('\n')) lines.push(g)
+        }
       }
       lines.push('', `Wiki summaries:`)
       const root = memoryRoot(cwd)
@@ -1002,6 +1011,7 @@ export function apply(ctx) {
         supersededBy: task.supersededBy || null,
         requiredEvidence: Array.isArray(task.verificationPlan?.requiredEvidence) ? task.verificationPlan.requiredEvidence : [],
         requiredArtifacts: task.requiredArtifacts || [],
+        guidance: task.guidance || '',
       })
     }
     function wikiStats() {

@@ -252,6 +252,21 @@ For any long-running remote job (training, eval, upload, experiment):
   DAG tasks may be claimed by multiple workers concurrently, but dependencies
   remain gated by accepted tasks.
 
+### Detailed dispatch guidance (anti-detail-loss)
+
+- When adding research / design / implementation tasks, capture the key
+  code-level pointers in the task's `guidance` field:
+  file paths, exact function/class names, data formats, formulas, constraints,
+  existing code to reuse, known pitfalls to avoid.
+- Before dispatching, build the worker prompt with
+  `mission_context(task_id=<id>)` and/or `mission_consume_artifacts`, then
+  paste the resolved guidance/acceptance/artifact paths into the prompt.
+  Do **not** reduce a dispatch prompt to just the task title.
+- A worker prompt should include: Role Card → Mission Brief → focused task
+  details (`guidance`, acceptance, required artifacts) → expected evidence.
+- Workers should still run `wiki_search` and `method-card` before non-trivial
+  work; the `guidance` field may point to the exact wiki/method pages.
+
 ### Research → Engineering handoff (value bridge)
 
 - Research/design tasks must publish their valuable outputs to the blackboard

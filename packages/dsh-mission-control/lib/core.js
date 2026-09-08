@@ -128,6 +128,7 @@ export function addTask(mission, task) {
     dependencies: Array.isArray(task.dependencies) ? task.dependencies.map(String) : [],
     capabilities: Array.isArray(task.capabilities) ? task.capabilities.map(String) : [],
     requiredArtifacts: Array.isArray(task.requiredArtifacts) ? task.requiredArtifacts.map(String) : [],
+    guidance: typeof task.guidance === 'string' ? task.guidance : (task.guidance ? String(task.guidance) : ''),
     scrutinyLevel: ['high', 'standard', 'low'].includes(task.scrutinyLevel) ? task.scrutinyLevel : 'standard',
     acceptance: task.acceptance.map(String),
     verificationPlan,
@@ -182,6 +183,9 @@ export function updateTask(mission, taskId, patch) {
       throw new Error('verificationPlan must be an object')
     }
     task.verificationPlan = patch.verificationPlan
+  }
+  if (patch.guidance !== undefined) {
+    task.guidance = typeof patch.guidance === 'string' ? patch.guidance : String(patch.guidance || '')
   }
   if (patch.kind !== undefined) {
     if (typeof patch.kind !== 'string' || !TASK_KINDS.includes(patch.kind)) {
@@ -595,6 +599,7 @@ export function summarizeTasks(mission) {
       assignee: t.assignee,
       dependencies: t.dependencies,
       requiredArtifacts: t.requiredArtifacts || [],
+      guidance: t.guidance || '',
       replaces: t.replaces || null,
       supersededBy: t.supersededBy || null,
       acceptance: t.acceptance,
