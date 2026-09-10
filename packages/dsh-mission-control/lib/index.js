@@ -544,6 +544,64 @@ function buildWorkerPrompt(mission, task) {
   lines.push('4. When done, call mission_submit with evidence paths; do not mark your own review.')
   return lines.join('\n')
 }
+function buildMissionGoalObjective(mission) {
+  const lines = []
+  lines.push(`Mission ${mission.id}: ${mission.title || ''}`)
+  lines.push(`Goal: ${(mission.goals || [])[0] || ''}`)
+  if (mission.goals && mission.goals.length > 1) {
+    for (let i = 1; i < mission.goals.length; i += 1) lines.push(`Additional goal: ${mission.goals[i]}`)
+  }
+  lines.push('Success criteria:')
+  for (const c of mission.successCriteria || []) lines.push(`- ${c}`)
+  return lines.join('\n')
+}
+
+  // ── mission_goal_sync ─────────────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_goal_sync',
+    description: 'Explicit, dry-run-first bridge from a mission to the official DSH session goal (ctx.goals). If a goal already exists it reports it and does nothing; otherwise it either reports the planned objective (dry_run=true, default) or creates the goal (dry_run=false). It does not pause/resume/complete an existing goal.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to the current session/workspace mission.' },
+        dry_run: { type: 'boolean', description: 'When true (default), only report the planned objective. Set false to create the official goal.' },
+        max_goal_rounds: { type: 'number', description: 'Optional official goal round cap.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('mission_goal_sync result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd, exec)
+      const get = (key) => { try { return ctx.get(key) } catch { return undefined } }
+      const goals = get('goals')
+      const agent = exec?.agent
+      if (!goals) return JSON.stringify({ available: false, reason: 'ctx.goals is not mounted' }, null, 2)
+      if (!agent) return JSON.stringify({ available: false, reason: 'no exact live agent in exec' }, null, 2)
+      if (typeof goals.get !== 'function' || typeof goals.create !== 'function') {
+        return JSON.stringify({ available: false, reason: 'ctx.goals.get/create is missing' }, null, 2)
+      }
+      let existing = null
+      try { existing = goals.get(agent) || null } catch (err) {
+        return JSON.stringify({ available: false, reason: 'goals.get failed: ' + String((err && err.message) || err) }, null, 2)
+      }
+      const objective = buildMissionGoalObjective(mission)
+      const dryRun = args.dry_run !== false
+      if (existing) {
+        return JSON.stringify({ available: true, dryRun, missionId: mission.id, existing, action: 'none', reason: 'official goal already exists; not modifying it' }, null, 2)
+      }
+      if (dryRun) {
+        return JSON.stringify({ available: true, dryRun: true, missionId: mission.id, existing: null, action: 'create', planned: { objective, maxGoalRounds: Number.isFinite(args.max_goal_rounds) ? args.max_goal_rounds : undefined } }, null, 2)
+      }
+      try {
+        const created = goals.create(agent, { objective, ...(Number.isFinite(args.max_goal_rounds) ? { maxGoalRounds: args.max_goal_rounds } : {}) })
+        return JSON.stringify({ available: true, dryRun: false, missionId: mission.id, existing: null, action: 'created', created }, null, 2)
+      } catch (err) {
+        return JSON.stringify({ available: true, dryRun: false, missionId: mission.id, action: 'error', error: String((err && err.message) || err) }, null, 2)
+      }
+    },
+  })
+
   // ── mission_worker_plan ───────────────────────────────────────────────────
   ctx.tools.register({
     name: 'mission_worker_plan',

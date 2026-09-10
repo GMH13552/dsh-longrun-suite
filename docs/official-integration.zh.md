@@ -109,6 +109,10 @@ mission_capabilities
   - 解析 `ctx.subagents` provider 列表，检查 `prepareContinuable` 能力。
   - 生成完整 worker prompt：mission goal/成功标准、task guidance、验收标准、必需产物、依赖、worker protocol。
   - 不 spawn、不 claim、不发消息。
+- 已实现 `mission_goal_sync`（显式、默认 dry_run）：
+  - 如果官方 goal 已存在：返回 `action:'none'`，不修改。
+  - 如果不存在：`dry_run=true` 只报告 objective 计划；`dry_run=false` 才调用 `ctx.goals.create`。
+  - 不 pause/resume/complete 已存在的 goal。
 - 计划中（显式、需单独确认）：
   - 真正的 `startContinuable()` 派发（默认 dry-run，显式 opt-in）。
   - 用官方 `subagents.sendMessage()` / `followup()` 承载 worker 续跑消息。
@@ -148,6 +152,7 @@ mission_capabilities
 - [x] `mission_subagent_view` 在模拟 `ctx.subagents` 下返回 providers/children/descendants，未挂载时安全空转。
 - [x] `mission_goal_view` 在模拟 `ctx.goals` 下返回 goal，未挂载时安全空转。
 - [x] `mission_worker_plan` 在模拟 `ctx.subagents` 下返回 provider readiness、durable label 和包含 guidance/artifact/protocol 的完整 prompt，不产生副作用。
+- [x] `mission_goal_sync` 在模拟 `ctx.goals` 下验证 dry-run 计划、显式 create、已存在 goal 不修改三条路径。
 - [ ] 官方 mailbox 消息不丢、不重复。
 - [ ] mission review / blind / final audit 全程不变。
 - [ ] 旧 DSH 版本下 `mission_capabilities` 返回全 false 或 null，不报错。
