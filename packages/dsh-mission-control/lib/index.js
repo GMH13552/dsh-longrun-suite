@@ -190,10 +190,94 @@ function readOfficialAgentTeamView(ctx, exec) {
   const agent = exec?.agent
   if (!at) return { available: false, reason: 'ctx.agentTeams is not mounted' }
   if (!agent) return { available: false, reason: 'no exact live agent in exec' }
-  const out = { available: true, members: [], tasks: [] }
-  if (typeof at.listMembers === 'function') out.members = at.listMembers(agent)
-  if (typeof at.listTasks === 'function') out.tasks = at.listTasks(agent)
+  const out = { available: true, members: [], tasks: [], errors: [] }
+  try {
+    if (typeof at.listMembers === 'function') out.members = at.listMembers(agent)
+  } catch (err) { out.errors.push('listMembers: ' + String((err && err.message) || err)) }
+  try {
+    if (typeof at.listTasks === 'function') out.tasks = at.listTasks(agent)
+  } catch (err) { out.errors.push('listTasks: ' + String((err && err.message) || err)) }
   return out
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Explicit, idempotent, one-way mirror of mission tasks into the official
+ * Agent Teams shared task board. .mission stays the source of truth; official
+ * tasks are matched by a [mission:<missionId>:<taskId>] marker. Defaults to
+ * dry-run so callers can inspect planned writes first.
+ */
+async function syncMissionToAgentTeam(ctx, exec, mission, dryRun) {
+  const get = (key) => {
+    try { return ctx.get(key) } catch { return undefined }
+  }
+  const at = get('agentTeams')
+  const agent = exec?.agent
+  if (!at) return { available: false, reason: 'ctx.agentTeams is not mounted' }
+  if (!agent) return { available: false, reason: 'no exact live agent in exec' }
+  for (const method of ['listTasks', 'createTask', 'updateTask']) {
+    if (typeof at[method] !== 'function') return { available: false, reason: `ctx.agentTeams.${method} is missing` }
+  }
+  const result = { available: true, dryRun: Boolean(dryRun), missionId: mission.id, created: [], skipped: [], planned: [], errors: [] }
+  let existing
+  try { existing = at.listTasks(agent) || [] } catch (err) {
+    return { available: false, reason: 'listTasks failed: ' + String((err && err.message) || err) }
+  }
+  const marker = new RegExp('\\[mission:' + escapeRegExp(mission.id) + ':([^\\]]+)\\]')
+  const byMissionTask = {}
+  for (const t of existing) {
+    const m = marker.exec(String(t.description || ''))
+    if (m) byMissionTask[m[1]] = t
+  }
+  const tasks = Object.values(mission.tasks || {})
+  // pass 1: create missing official tasks
+  for (const task of tasks) {
+    if (byMissionTask[task.id]) {
+      result.skipped.push({ taskId: task.id, officialId: byMissionTask[task.id].id, reason: 'already mirrored' })
+      continue
+    }
+    if (dryRun) {
+      result.planned.push({ taskId: task.id, action: 'create', subject: task.title })
+      continue
+    }
+    try {
+      const description = (task.guidance ? String(task.guidance) + '\n\n' : '') + '[mission:' + mission.id + ':' + task.id + ']\nstatus=' + task.status + '\nkind=' + (task.kind || '')
+      const view = await at.createTask(agent, { subject: task.title, description, blockedBy: [], writeScopes: [] })
+      byMissionTask[task.id] = view
+      result.created.push({ taskId: task.id, officialId: view.id })
+    } catch (err) {
+      result.errors.push({ taskId: task.id, action: 'create', error: String((err && err.message) || err) })
+    }
+  }
+  // pass 2: mirror dependencies onto official tasks
+  for (const task of tasks) {
+    const official = byMissionTask[task.id]
+    if (!official) continue
+    const wanted = []
+    for (const dep of task.dependencies || []) {
+      const mapped = byMissionTask[dep]
+      if (mapped) wanted.push(mapped.id)
+    }
+    if (wanted.length === 0) continue
+    const current = (official.blockedBy || []).slice().sort().join('|')
+    const next = wanted.slice().sort().join('|')
+    if (current === next) continue
+    if (dryRun) {
+      result.planned.push({ taskId: task.id, action: 'set_dependencies', officialId: official.id, blockedBy: wanted })
+      continue
+    }
+    try {
+      const updated = await at.updateTask(agent, { taskId: official.id, expectedRevision: official.revision, action: 'set_dependencies', blockedBy: wanted })
+      byMissionTask[task.id] = updated
+      result.skipped.push({ taskId: task.id, officialId: updated.id, reason: 'dependencies synced' })
+    } catch (err) {
+      result.errors.push({ taskId: task.id, action: 'set_dependencies', error: String((err && err.message) || err) })
+    }
+  }
+  return result
 }
 
 function evidencePathExists(cwd, missionId, p) {
@@ -312,6 +396,28 @@ export function apply(ctx) {
     output: textOutput('mission_agent_team_view result'),
     async execute(_args, exec) {
       return JSON.stringify(readOfficialAgentTeamView(ctx, exec), null, 2)
+    },
+  })
+
+  // ── mission_agent_team_sync ───────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_agent_team_sync',
+    description: 'Explicit, idempotent, one-way mirror of mission tasks into the official DSH Agent Teams shared task board (ctx.agentTeams). .mission remains the source of truth; existing official tasks are matched by a [mission:<missionId>:<taskId>] marker. Defaults to dry_run=true so planned writes can be inspected first. No-op when ctx.agentTeams is absent.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to the current session/workspace mission.' },
+        dry_run: { type: 'boolean', description: 'When true (default), only report planned create/set_dependencies actions. Set false to write the mirror.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('mission_agent_team_sync result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd, exec)
+      const dryRun = args.dry_run !== false
+      const result = await syncMissionToAgentTeam(ctx, exec, mission, dryRun)
+      return JSON.stringify(result, null, 2)
     },
   })
 

@@ -92,9 +92,11 @@ mission_capabilities
   - 返回官方 roster 与 task board 的只读快照。
   - `ctx.agentTeams` 未挂载时返回 `{ available: false, reason }`，不报错。
   - 不写官方 board，也不改 `.mission`。
-- 计划中（显式调用、低风险）：
-  - `mission_agent_team_sync`：把 `mission.tasks` 以幂等方式镜像到官方 task board。
-  - 使用 `[mission:<missionId>:<taskId>]` 标记去重；默认 `dry_run` 先报告将创建的内容。
+- 已实现 `mission_agent_team_sync`（显式调用，默认 dry_run）：
+  - 把 `mission.tasks` 以幂等方式镜像到官方 task board。
+  - 使用 `[mission:<missionId>:<taskId>]` 标记去重。
+  - 先创建缺失任务，再通过 `set_dependencies` 镜像依赖。
+  - `dry_run=true` 只报告 planned create/set_dependencies，不写官方 board。
   - 官方 board 仍不是 mission 状态来源；不双写。
 
 ### Phase 2：消息 / worker 适配（中风险）
@@ -133,7 +135,8 @@ mission_capabilities
 - [x] `dsh-timer-scheduler-ui` client 注册成功。
 - [x] `mission_capabilities` 在模拟 0.1.5 服务面上返回正确探测结果。
 - [x] `mission_agent_team_view` 在模拟 `ctx.agentTeams` 下返回 roster/task 只读快照，未挂载时返回 available=false。
-- [ ] `agentTeams` 挂载时，只读镜像不产生双写冲突。
+- [x] `mission_agent_team_sync` 在模拟 agentTeams 下 dry_run 不写入、write 创建幂等任务并镜像依赖。
+- [ ] 真实 agentTeams 挂载时验证幂等/冲突行为。
 - [ ] 官方 mailbox 消息不丢、不重复。
 - [ ] mission review / blind / final audit 全程不变。
 - [ ] 旧 DSH 版本下 `mission_capabilities` 返回全 false 或 null，不报错。
