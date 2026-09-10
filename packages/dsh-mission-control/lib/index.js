@@ -481,6 +481,110 @@ function readOfficialGoalView(ctx, exec) {
     },
   })
 
+/**
+ * Choose a ready mission task for an official worker plan: explicit id, or the
+ * first open task whose dependencies and required artifacts are satisfied.
+ */
+function selectReadyMissionTask(mission, taskId) {
+  if (taskId) {
+    const task = mission.tasks && mission.tasks[taskId]
+    if (!task) throw new Error(`task not found: ${taskId}`)
+    return task
+  }
+  const present = new Set((mission.artifacts || []).map((a) => a.type))
+  for (const task of Object.values(mission.tasks || {})) {
+    if (!task || task.status !== 'open') continue
+    const depsOk = (task.dependencies || []).every((d) => mission.tasks[d] && mission.tasks[d].status === 'accepted')
+    const artsOk = (task.requiredArtifacts || []).every((a) => present.has(a))
+    if (depsOk && artsOk) return task
+  }
+  return null
+}
+
+function buildWorkerPrompt(mission, task) {
+  const lines = []
+  lines.push(`Mission: ${mission.id} — ${mission.title || ''}`)
+  lines.push(`Goal: ${(mission.goals || [])[0] || ''}`)
+  lines.push('Success criteria:')
+  for (const c of mission.successCriteria || []) lines.push(`- ${c}`)
+  lines.push('')
+  lines.push(`Task: ${task.id} [${task.status}] ${task.title}`)
+  lines.push(`Kind: ${task.kind || '?'}`)
+  lines.push(`Planned assignee: ${task.assignee || '?'}`)
+  if (task.guidance) {
+    lines.push('')
+    lines.push('Dispatch guidance (follow closely):')
+    lines.push(String(task.guidance))
+  }
+  if (task.acceptance && task.acceptance.length) {
+    lines.push('')
+    lines.push('Acceptance criteria:')
+    for (const a of task.acceptance) lines.push(`- ${a}`)
+  }
+  if (task.requiredArtifacts && task.requiredArtifacts.length) {
+    lines.push('')
+    lines.push('Required blackboard artifacts:')
+    for (const type of task.requiredArtifacts) {
+      const matches = (mission.artifacts || []).filter((a) => a.type === type)
+      if (matches.length === 0) lines.push(`- ${type} (missing)`)
+      else for (const a of matches) lines.push(`- ${type} | ${a.path} | ${a.summary || ''}`)
+    }
+  }
+  const deps = (task.dependencies || []).map((d) => mission.tasks[d]).filter(Boolean)
+  if (deps.length) {
+    lines.push('')
+    lines.push('Accepted dependencies:')
+    for (const d of deps) lines.push(`- ${d.id} [${d.status}] ${d.title}`)
+  }
+  lines.push('')
+  lines.push('Worker protocol:')
+  lines.push(`1. Call mission_claim(task_id="${task.id}"${task.assignee ? `, assignee="${task.assignee}"` : ''}) before working.`)
+  lines.push('2. Read required artifacts with mission_consume_artifacts or mission_context; do not rely on chat.')
+  lines.push('3. Publish durable outputs with mission_publish_artifact (typed, path, summary).')
+  lines.push('4. When done, call mission_submit with evidence paths; do not mark your own review.')
+  return lines.join('\n')
+}
+  // ── mission_worker_plan ───────────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_worker_plan',
+    description: 'Read-only plan for delegating one ready mission task to an official continuable subagent (ctx.subagents). Produces the provider readiness, durable label, and a complete worker prompt containing mission context, dispatch guidance, acceptance, required artifacts, and worker protocol. It does not spawn or message anything.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Optional mission task id. Defaults to the first ready open task.' },
+        provider: { type: 'string', description: 'Optional ctx.subagents provider name. Defaults to the first registered provider.' },
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to the current session/workspace mission.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('mission_worker_plan result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd, exec)
+      const task = selectReadyMissionTask(mission, args.task_id)
+      if (!task) return JSON.stringify({ available: false, reason: 'no ready open task with satisfied dependencies/artifacts' }, null, 2)
+      const get = (key) => { try { return ctx.get(key) } catch { return undefined } }
+      const sub = get('subagents')
+      if (!sub) return JSON.stringify({ available: false, reason: 'ctx.subagents is not mounted', taskId: task.id }, null, 2)
+      const providers = typeof sub.list === 'function' ? sub.list() : []
+      const provider = args.provider || providers[0] || 'spawn'
+      const providerObj = typeof sub.getProvider === 'function' ? sub.getProvider(provider) : undefined
+      const plan = {
+        available: true,
+        taskId: task.id,
+        taskTitle: task.title,
+        assignee: task.assignee || null,
+        provider,
+        providers,
+        providerFound: Boolean(providerObj),
+        providerSupportsContinuable: Boolean(providerObj && typeof providerObj.prepareContinuable === 'function'),
+        label: `${mission.id}/${task.id}`,
+        promptText: buildWorkerPrompt(mission, task),
+      }
+      return JSON.stringify(plan, null, 2)
+    },
+  })
+
   // ── mission_append_goal ───────────────────────────────────────────────────
   ctx.tools.register({
     name: 'mission_append_goal',

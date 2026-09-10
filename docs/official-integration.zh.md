@@ -104,9 +104,14 @@ mission_capabilities
   - `mission_subagent_view`：读取 `ctx.subagents.list()` / `listChildren()` / `listDescendants()`。
   - `mission_goal_view`：读取 `ctx.goals.get(agent)`。
   - 未挂载时返回 `{ available:false, reason }`，不报错。
+- 已实现 `mission_worker_plan`（只读）：
+  - 选择第一个 ready 的 open 任务，或显式 `task_id`。
+  - 解析 `ctx.subagents` provider 列表，检查 `prepareContinuable` 能力。
+  - 生成完整 worker prompt：mission goal/成功标准、task guidance、验收标准、必需产物、依赖、worker protocol。
+  - 不 spawn、不 claim、不发消息。
 - 计划中（显式、需单独确认）：
-  - 用官方 `subagents.followup()` / `reportFrom()` 替代部分自定义 worker 唤醒路径。
-  - 用官方 `startContinuable()` 管理长期 worker 的冷恢复，减少 timer 兜底。
+  - 真正的 `startContinuable()` 派发（默认 dry-run，显式 opt-in）。
+  - 用官方 `subagents.sendMessage()` / `followup()` 承载 worker 续跑消息。
   - 配置开关：`officialIntegration: 'off' | 'readonly' | 'messages' | 'full'`，默认 `off`。
 
 ### Phase 3：可选官方后端（高风险，后置）
@@ -142,6 +147,7 @@ mission_capabilities
 - [ ] 真实 agentTeams 挂载时验证幂等/冲突行为。
 - [x] `mission_subagent_view` 在模拟 `ctx.subagents` 下返回 providers/children/descendants，未挂载时安全空转。
 - [x] `mission_goal_view` 在模拟 `ctx.goals` 下返回 goal，未挂载时安全空转。
+- [x] `mission_worker_plan` 在模拟 `ctx.subagents` 下返回 provider readiness、durable label 和包含 guidance/artifact/protocol 的完整 prompt，不产生副作用。
 - [ ] 官方 mailbox 消息不丢、不重复。
 - [ ] mission review / blind / final audit 全程不变。
 - [ ] 旧 DSH 版本下 `mission_capabilities` 返回全 false 或 null，不报错。
