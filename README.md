@@ -248,6 +248,14 @@ Web 界面的 `conversation.view` 视图环新增一个「任务」标签页，�
 | worker 交换数据 | `mission_publish_artifact` / `mission_consume_artifacts` |
 | 最终审计前 | `mission_blind_review` + `wiki_lint` |
 
+## 与官方 DSH 0.1.5 能力的关系
+
+DSH `0.1.5` 新增了 Agent Teams、可继续子代理、`goal` / `ralph` 长任务等运行时能力。本套项目定位为**治理与验收层**：保留 mission 成功标准、独立评审、盲审、final audit、typed artifact blackboard、wiki memory；官方 `ctx.subagents` / `ctx.agentTeams` / `ctx.goals` 作为可选增强，通过 `mission_capabilities` 探测后按开关接入，不硬依赖 experimental 包。
+
+`long-run-router` 转为 **legacy / optional**：新 session 优先使用官方长任务与子代理能力，router 只保留旧 DSH 兼容。
+
+详细设计见 [`docs/official-integration.zh.md`](docs/official-integration.zh.md)。
+
 ## 整体结构
 
 ```text

@@ -127,6 +127,49 @@ function textOutput(value) {
   }
 }
 
+/**
+ * Detect official DSH runtime coordination seams without hard-depending on
+ * any of them. The mission file backend remains the source of truth; these
+ * flags only let the model choose a safe integration path.
+ */
+function detectOfficialCapabilities(ctx) {
+  const get = (key) => {
+    try { return ctx.get(key) } catch { return undefined }
+  }
+  const subagents = get('subagents')
+  const agentTeams = get('agentTeams')
+  const goals = get('goals')
+  const projections = get('sessionProjections')
+  const hasFn = (obj, name) => Boolean(obj && typeof obj[name] === 'function')
+  return {
+    official: {
+      subagents: Boolean(subagents),
+      agentTeams: Boolean(agentTeams),
+      goals: Boolean(goals),
+      sessionProjections: Boolean(projections),
+    },
+    subagents: subagents ? {
+      startContinuable: hasFn(subagents, 'startContinuable'),
+      sendMessage: hasFn(subagents, 'sendMessage'),
+      interrupt: hasFn(subagents, 'interrupt'),
+      listChildren: hasFn(subagents, 'listChildren'),
+      listDescendants: hasFn(subagents, 'listDescendants'),
+      listProviders: hasFn(subagents, 'list'),
+    } : null,
+    agentTeams: agentTeams ? {
+      roster: hasFn(agentTeams, 'listMembers') || hasFn(agentTeams, 'roster'),
+      sendMessage: hasFn(agentTeams, 'sendMessage'),
+      taskBoard: hasFn(agentTeams, 'listTasks') || hasFn(agentTeams, 'createTask') || hasFn(agentTeams, 'updateTask'),
+      waitForChange: hasFn(agentTeams, 'waitForChange'),
+    } : null,
+    goals: goals ? {
+      get: hasFn(goals, 'get'),
+      create: hasFn(goals, 'create'),
+      update: hasFn(goals, 'update'),
+    } : null,
+  }
+}
+
 function evidencePathExists(cwd, missionId, p) {
   if (!p || typeof p !== 'string') return false
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(p)) return true // URL evidence is accepted as a reference
@@ -221,6 +264,17 @@ export function apply(ctx) {
       const cwd = cwdOf(exec)
       const mission = requireMissionId(args, cwd, exec)
       return statusText(mission)
+    },
+  })
+
+  // ── mission_capabilities ─────────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_capabilities',
+    description: 'Report which official DSH runtime coordination capabilities are available in this composition: Agent Teams (ctx.agentTeams), continuable subagents (ctx.subagents), and goals (ctx.goals). Use this before choosing whether to integrate with official seams; mission state itself still lives in .mission files and is unaffected.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    output: textOutput('mission_capabilities result'),
+    async execute(_args, _exec) {
+      return JSON.stringify(detectOfficialCapabilities(ctx), null, 2)
     },
   })
 
