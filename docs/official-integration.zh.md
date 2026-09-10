@@ -86,12 +86,16 @@ mission_capabilities
 - 新增 `mission_capabilities`。
 - 不改任何现有 mission 行为。
 
-### Phase 1：只读镜像（低风险）
-- 当 `ctx.get('agentTeams')` 存在且配置开启时：
-  - 把 `mission.tasks` 的 id/title/status/dependencies 只读镜像到官方 task board，供 UI 展示。
-  - 不把官方 board 作为 mission 状态来源；不双写。
-- 当 `ctx.get('subagents')` 存在时：
-  - 在 `mission_status` / `mission_context` 中附带可用 worker 续跑信息（只读）。
+### Phase 1：只读观察 / 镜像（低风险）
+- 已实现 `mission_agent_team_view`：
+  - 读取 `ctx.agentTeams.listMembers()` / `listTasks()`。
+  - 返回官方 roster 与 task board 的只读快照。
+  - `ctx.agentTeams` 未挂载时返回 `{ available: false, reason }`，不报错。
+  - 不写官方 board，也不改 `.mission`。
+- 计划中（显式调用、低风险）：
+  - `mission_agent_team_sync`：把 `mission.tasks` 以幂等方式镜像到官方 task board。
+  - 使用 `[mission:<missionId>:<taskId>]` 标记去重；默认 `dry_run` 先报告将创建的内容。
+  - 官方 board 仍不是 mission 状态来源；不双写。
 
 ### Phase 2：消息 / worker 适配（中风险）
 - 用官方 `subagents.sendMessage()` 替代部分自定义 subagent 唤醒路径：
@@ -127,7 +131,8 @@ mission_capabilities
 
 - [x] DSH `0.1.5-rc.1` 下 `dsh-mission-control` client 注册成功。
 - [x] `dsh-timer-scheduler-ui` client 注册成功。
-- [ ] `mission_capabilities` 在真实 0.1.5 实例中返回正确探测结果。
+- [x] `mission_capabilities` 在模拟 0.1.5 服务面上返回正确探测结果。
+- [x] `mission_agent_team_view` 在模拟 `ctx.agentTeams` 下返回 roster/task 只读快照，未挂载时返回 available=false。
 - [ ] `agentTeams` 挂载时，只读镜像不产生双写冲突。
 - [ ] 官方 mailbox 消息不丢、不重复。
 - [ ] mission review / blind / final audit 全程不变。

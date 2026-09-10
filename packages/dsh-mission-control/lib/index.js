@@ -159,10 +159,15 @@ function detectOfficialCapabilities(ctx) {
       listProviders: hasFn(subagents, 'list'),
     } : null,
     agentTeams: agentTeams ? {
-      roster: hasFn(agentTeams, 'listMembers') || hasFn(agentTeams, 'roster'),
+      membership: hasFn(agentTeams, 'membership') || hasFn(agentTeams, 'tryMembership'),
+      roster: hasFn(agentTeams, 'listMembers'),
+      spawnTeammate: hasFn(agentTeams, 'spawnTeammate'),
       sendMessage: hasFn(agentTeams, 'sendMessage'),
-      taskBoard: hasFn(agentTeams, 'listTasks') || hasFn(agentTeams, 'createTask') || hasFn(agentTeams, 'updateTask'),
+      taskBoard: hasFn(agentTeams, 'listTasks') && hasFn(agentTeams, 'createTask') && hasFn(agentTeams, 'updateTask'),
+      taskRead: hasFn(agentTeams, 'listTasks') && hasFn(agentTeams, 'getTask'),
       waitForChange: hasFn(agentTeams, 'waitForChange'),
+      interrupt: hasFn(agentTeams, 'interrupt'),
+      remoteView: hasFn(agentTeams, 'remoteView'),
     } : null,
     goals: goals ? {
       get: hasFn(goals, 'get'),
@@ -170,6 +175,25 @@ function detectOfficialCapabilities(ctx) {
       update: hasFn(goals, 'update'),
     } : null,
   }
+}
+
+/**
+ * Read the official Agent Teams roster/task board without writing anything.
+ * Returns an availability envelope so callers can distinguish "not mounted"
+ * from "mounted but empty".
+ */
+function readOfficialAgentTeamView(ctx, exec) {
+  const get = (key) => {
+    try { return ctx.get(key) } catch { return undefined }
+  }
+  const at = get('agentTeams')
+  const agent = exec?.agent
+  if (!at) return { available: false, reason: 'ctx.agentTeams is not mounted' }
+  if (!agent) return { available: false, reason: 'no exact live agent in exec' }
+  const out = { available: true, members: [], tasks: [] }
+  if (typeof at.listMembers === 'function') out.members = at.listMembers(agent)
+  if (typeof at.listTasks === 'function') out.tasks = at.listTasks(agent)
+  return out
 }
 
 function evidencePathExists(cwd, missionId, p) {
@@ -277,6 +301,17 @@ export function apply(ctx) {
     output: textOutput('mission_capabilities result'),
     async execute(_args, _exec) {
       return JSON.stringify(detectOfficialCapabilities(ctx), null, 2)
+    },
+  })
+
+  // ── mission_agent_team_view ───────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_agent_team_view',
+    description: 'Read-only view of the official DSH Agent Teams roster and shared task board (ctx.agentTeams), if mounted. This never writes to the official board or to .mission; use mission_capabilities to check availability first.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    output: textOutput('mission_agent_team_view result'),
+    async execute(_args, exec) {
+      return JSON.stringify(readOfficialAgentTeamView(ctx, exec), null, 2)
     },
   })
 
