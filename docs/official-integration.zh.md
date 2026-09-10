@@ -61,7 +61,9 @@ mission_capabilities
   },
   "subagents": {
     "startContinuable": true,
-    "sendMessage": true,
+    "followup": true,
+    "reportFrom": true,
+    "sendMessage": false,
     "interrupt": true,
     "listChildren": true,
     "listDescendants": true,

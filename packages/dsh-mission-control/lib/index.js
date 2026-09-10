@@ -150,7 +150,9 @@ function detectOfficialCapabilities(ctx) {
     },
     subagents: subagents ? {
       startContinuable: hasFn(subagents, 'startContinuable'),
-      sendMessage: hasFn(subagents, 'sendMessage'),
+      followup: hasFn(subagents, 'followup'),
+      reportFrom: hasFn(subagents, 'reportFrom'),
+      sendMessage: hasFn(subagents, 'sendMessage'), // older/alternative seam name
       interrupt: hasFn(subagents, 'interrupt'),
       listChildren: hasFn(subagents, 'listChildren'),
       listDescendants: hasFn(subagents, 'listDescendants'),
