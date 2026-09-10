@@ -93,7 +93,7 @@ export function apply(ctx, config) {
     if (routerMode === 'standard') {
       persona = RL_PERSONA
       const isSubagent = agent.session.header?.origin === 'subagent' || (agent.options?.subagentDepth ?? 0) > 0
-      const hasToolCall = session.events.some((event) => event.type === 'tool/call')
+      const hasToolCall = (session.snapshotEvents?.() ?? session.events ?? []).some((event) => event.type === 'tool/call')
       if (isSubagent) {
         // Keep the child's role persona visible even in the minimal first
         // turn; only the root Captain persona is omitted.
@@ -131,7 +131,7 @@ export function apply(ctx, config) {
       core = new Set(legacyCore(mode))
     }
 
-    if (session.events.some((event) => event.type === 'tool/call')) {
+    if ((session.snapshotEvents?.() ?? session.events ?? []).some((event) => event.type === 'tool/call')) {
       // Keep the exact first-turn sections for the whole session; only expose
       // the full tool catalog. This is what makes router-standard keep the
       // `We / Let's` collective-planning behavior even after tools appear.

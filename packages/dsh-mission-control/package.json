@@ -42,9 +42,10 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-api-remotes"
+        "@deepseek-ai/dsh-cordis-client-runner",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-conversation"
       ],
       "platform": "web",
       "immediately": true
@@ -53,7 +54,8 @@
       "dshReleases": {
         "0.1.0-rc.8": "compatible",
         "0.1.1-rc.1": "compatible",
-        "0.1.1-rc.2": "compatible"
+        "0.1.1-rc.2": "compatible",
+        "0.1.5-rc.1": "compatible"
       },
       "dsh": ">=0.1.0-rc.8 <0.2.0",
       "node": ">=20"

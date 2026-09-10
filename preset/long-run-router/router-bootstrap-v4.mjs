@@ -123,7 +123,7 @@ export function apply(ctx, config) {
       core = new Set(legacyCore(mode))
     }
 
-    if (session.events.some((event) => event.type === 'tool/call')) {
+    if ((session.snapshotEvents?.() ?? session.events ?? []).some((event) => event.type === 'tool/call')) {
       // Keep the exact first-turn sections for the whole session; only expose
       // the full tool catalog. This is what makes router-standard keep the
       // `We / Let's` collective-planning behavior even after tools appear.
