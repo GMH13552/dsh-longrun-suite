@@ -100,11 +100,14 @@ mission_capabilities
   - 官方 board 仍不是 mission 状态来源；不双写。
 
 ### Phase 2：消息 / worker 适配（中风险）
-- 用官方 `subagents.sendMessage()` 替代部分自定义 subagent 唤醒路径：
-  - 角色 worker 的完成通知、checkpoint、继续执行走官方 durable mailbox。
-  - mission artifact 仍走 `mission_publish_artifact` / `mission_consume_artifacts`。
-- 用官方 `startContinuable()` 管理长期 worker 的冷恢复，减少 timer 兜底。
-- 配置开关：`officialIntegration: 'off' | 'readonly' | 'messages' | 'full'`，默认 `off`。
+- 已实现只读观察：
+  - `mission_subagent_view`：读取 `ctx.subagents.list()` / `listChildren()` / `listDescendants()`。
+  - `mission_goal_view`：读取 `ctx.goals.get(agent)`。
+  - 未挂载时返回 `{ available:false, reason }`，不报错。
+- 计划中（显式、需单独确认）：
+  - 用官方 `subagents.followup()` / `reportFrom()` 替代部分自定义 worker 唤醒路径。
+  - 用官方 `startContinuable()` 管理长期 worker 的冷恢复，减少 timer 兜底。
+  - 配置开关：`officialIntegration: 'off' | 'readonly' | 'messages' | 'full'`，默认 `off`。
 
 ### Phase 3：可选官方后端（高风险，后置）
 - 评估把官方 Agent Teams 作为 mission worker 的 transport backend，但保留：
@@ -137,6 +140,8 @@ mission_capabilities
 - [x] `mission_agent_team_view` 在模拟 `ctx.agentTeams` 下返回 roster/task 只读快照，未挂载时返回 available=false。
 - [x] `mission_agent_team_sync` 在模拟 agentTeams 下 dry_run 不写入、write 创建幂等任务并镜像依赖。
 - [ ] 真实 agentTeams 挂载时验证幂等/冲突行为。
+- [x] `mission_subagent_view` 在模拟 `ctx.subagents` 下返回 providers/children/descendants，未挂载时安全空转。
+- [x] `mission_goal_view` 在模拟 `ctx.goals` 下返回 goal，未挂载时安全空转。
 - [ ] 官方 mailbox 消息不丢、不重复。
 - [ ] mission review / blind / final audit 全程不变。
 - [ ] 旧 DSH 版本下 `mission_capabilities` 返回全 false 或 null，不报错。

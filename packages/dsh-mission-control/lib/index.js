@@ -377,6 +377,44 @@ export function apply(ctx) {
     },
   })
 
+/**
+ * Read-only official subagent inventory for the exact live agent.
+ * Uses ctx.subagents.list()/listChildren()/listDescendants() when available.
+ */
+async function readOfficialSubagentView(ctx, exec) {
+  const get = (key) => {
+    try { return ctx.get(key) } catch { return undefined }
+  }
+  const sub = get('subagents')
+  const agent = exec?.agent
+  if (!sub) return { available: false, reason: 'ctx.subagents is not mounted' }
+  if (!agent || !agent.id) return { available: false, reason: 'no exact live agent in exec' }
+  const out = { available: true, agentId: agent.id, providers: [], children: [], descendants: [], errors: [] }
+  try { if (typeof sub.list === 'function') out.providers = sub.list() } catch (err) { out.errors.push('list: ' + String((err && err.message) || err)) }
+  try { if (typeof sub.listChildren === 'function') out.children = await sub.listChildren(agent.id) } catch (err) { out.errors.push('listChildren: ' + String((err && err.message) || err)) }
+  try { if (typeof sub.listDescendants === 'function') out.descendants = await sub.listDescendants(agent.id) } catch (err) { out.errors.push('listDescendants: ' + String((err && err.message) || err)) }
+  return out
+}
+
+/**
+ * Read-only official goal view for the exact live agent.
+ */
+function readOfficialGoalView(ctx, exec) {
+  const get = (key) => {
+    try { return ctx.get(key) } catch { return undefined }
+  }
+  const goals = get('goals')
+  const agent = exec?.agent
+  if (!goals) return { available: false, reason: 'ctx.goals is not mounted' }
+  if (!agent) return { available: false, reason: 'no exact live agent in exec' }
+  try {
+    const goal = typeof goals.get === 'function' ? goals.get(agent) : undefined
+    return { available: true, goal: goal || null }
+  } catch (err) {
+    return { available: false, reason: 'goals.get failed: ' + String((err && err.message) || err) }
+  }
+}
+
   // ── mission_capabilities ─────────────────────────────────────────────────
   ctx.tools.register({
     name: 'mission_capabilities',
@@ -418,6 +456,28 @@ export function apply(ctx) {
       const dryRun = args.dry_run !== false
       const result = await syncMissionToAgentTeam(ctx, exec, mission, dryRun)
       return JSON.stringify(result, null, 2)
+    },
+  })
+
+  // ── mission_subagent_view ─────────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_subagent_view',
+    description: 'Read-only view of official DSH subagent runtime (ctx.subagents): registered providers, direct children, and descendants for the exact live agent. No spawn, message, or mutation is performed. Use this to decide whether to use continuable official subagents for mission workers.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    output: textOutput('mission_subagent_view result'),
+    async execute(_args, exec) {
+      return JSON.stringify(await readOfficialSubagentView(ctx, exec), null, 2)
+    },
+  })
+
+  // ── mission_goal_view ─────────────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_goal_view',
+    description: 'Read-only view of the official DSH goal for the exact live agent (ctx.goals). No create/edit/pause/resume is performed. Use this to decide whether a session goal should complement a mission.',
+    parameters: { type: 'object', properties: {}, additionalProperties: false },
+    output: textOutput('mission_goal_view result'),
+    async execute(_args, exec) {
+      return JSON.stringify(readOfficialGoalView(ctx, exec), null, 2)
     },
   })
 
