@@ -282,7 +282,7 @@ window.__ModuleLoader__.load({
           e.preventDefault()
           e.stopPropagation()
           var p = currentPos(task.id)
-          dragRef.current = { id: task.id, startX: e.clientX, startY: e.clientY, origX: p.x, origY: p.y }
+          dragRef.current = { id: task.id, startX: e.clientX, startY: e.clientY, origX: p.x, origY: p.y, lastX: p.x, lastY: p.y, raf: 0 }
         }
         function canvasDown(e) {
           if (e.target && e.target.closest && e.target.closest('.dsh-node')) return
@@ -296,25 +296,46 @@ window.__ModuleLoader__.load({
           var ux = layout.width / scale / rect.width
           var uy = layout.height / scale / rect.height
           if (dragRef.current) {
+            e.preventDefault()
             var d = dragRef.current
-            var nx = d.origX + (e.clientX - d.startX) * ux
-            var ny = d.origY + (e.clientY - d.startY) * uy
-            var next = {}
-            Object.keys(positions || {}).forEach(function (id) { next[id] = positions[id] })
-            next[d.id] = { x: nx, y: ny }
-            setPositions(next)
-            try {
-              if (mission) {
-                window.localStorage.setItem('dsh-mission-positions:' + mission.id, JSON.stringify(next))
-                window.localStorage.setItem('dsh-mission-manual:' + mission.id, '1')
-              }
-            } catch (e) {}
+            d.lastX = d.origX + (e.clientX - d.startX) * ux
+            d.lastY = d.origY + (e.clientY - d.startY) * uy
+            if (!d.raf) {
+              d.raf = window.requestAnimationFrame(function () {
+                var id = d.id
+                var lx = d.lastX
+                var ly = d.lastY
+                d.raf = 0
+                setPositions(function (prev) {
+                  var next = {}
+                  Object.keys(prev || {}).forEach(function (k) { next[k] = prev[k] })
+                  next[id] = { x: lx, y: ly }
+                  return next
+                })
+              })
+            }
           } else if (panRef.current) {
             var p = panRef.current
             setView({ x: p.x - (e.clientX - p.startX) * ux, y: p.y - (e.clientY - p.startY) * uy, scale: scale })
           }
         }
         function canvasUp() {
+          if (dragRef.current) {
+            var d = dragRef.current
+            if (d.raf) {
+              window.cancelAnimationFrame(d.raf)
+              d.raf = 0
+            }
+            try {
+              if (mission) {
+                var saved = {}
+                Object.keys(positions || {}).forEach(function (k) { saved[k] = positions[k] })
+                saved[d.id] = { x: d.lastX, y: d.lastY }
+                window.localStorage.setItem('dsh-mission-positions:' + mission.id, JSON.stringify(saved))
+                window.localStorage.setItem('dsh-mission-manual:' + mission.id, '1')
+              }
+            } catch (e) {}
+          }
           panRef.current = null
           dragRef.current = null
         }
@@ -411,23 +432,39 @@ window.__ModuleLoader__.load({
         var nodes = visibleTasks.map(function (t) {
           var p = currentPos(t.id)
           if (!p) return null
-          return React.createElement('foreignObject', {
+          var label = String(t.title || t.id)
+          if (label.length > 13) label = label.slice(0, 12) + '…'
+          var stroke = t.status === 'accepted' ? 'var(--dsw-alias-state-success-primary)'
+            : t.status === 'rejected' ? 'var(--dsw-alias-state-error-primary)'
+            : t.status === 'needs_review' ? 'var(--dsw-alias-state-warn-primary)'
+            : t.status === 'active' ? 'var(--dsw-alias-brand-primary)'
+            : 'var(--dsw-alias-border-l2)'
+          return React.createElement('g', {
             key: t.id,
-            x: p.x,
-            y: p.y,
-            width: layout.nodeW,
-            height: layout.nodeH,
+            transform: 'translate(' + p.x + ',' + p.y + ')',
+            style: { cursor: 'move' },
+            onMouseDown: function (e) { startNodeDrag(e, t) },
+            onClick: function () { setChosen(t) },
           },
-            React.createElement('div', {
-              className: 'dsh-node ' + nodeClass(t.status),
-              title: t.title,
-              onMouseDown: function (e) { startNodeDrag(e, t) },
-              onClick: function () { setChosen(t) },
-            },
-              React.createElement('span', { className: 'dsh-node-dot', style: { background: dotColor(t.status) } }),
-              React.createElement('span', { className: 'dsh-node-id' }, t.id),
-              React.createElement('span', { className: 'dsh-node-label' }, t.title),
-            ),
+            React.createElement('title', null, t.title),
+            React.createElement('rect', {
+              width: layout.nodeW,
+              height: layout.nodeH,
+              rx: 10,
+              ry: 10,
+              style: { fill: 'var(--dsw-alias-bg-layer-2)', stroke: stroke, strokeWidth: 1.5 },
+            }),
+            React.createElement('circle', {
+              cx: 13,
+              cy: layout.nodeH / 2,
+              r: 4,
+              style: { fill: dotColor(t.status) },
+            }),
+            React.createElement('text', {
+              x: 24,
+              y: layout.nodeH / 2 + 4,
+              style: { fontSize: 11, fill: 'var(--dsw-alias-label-primary)', pointerEvents: 'none' },
+            }, t.id + ' ' + label),
           )
         })
 
