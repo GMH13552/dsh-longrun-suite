@@ -127,6 +127,24 @@ function textOutput(value) {
   }
 }
 
+function compactStatusText(mission) {
+  const counts = { open: 0, active: 0, needs_review: 0, accepted: 0, rejected: 0 }
+  const ready = []
+  for (const task of Object.values(mission.tasks || {})) {
+    if (counts[task.status] !== undefined) counts[task.status] += 1
+    if (task.status !== 'open' || task.leaseBlocked) continue
+    if ((task.dependencies || []).every((d) => mission.tasks[d] && mission.tasks[d].status === 'accepted')) ready.push(task.id)
+  }
+  const lines = [
+    `Mission ${mission.id} [${mission.status}] round=${mission.currentRound || 0}`,
+    `Counts: open=${counts.open} active=${counts.active} needs_review=${counts.needs_review} accepted=${counts.accepted} rejected=${counts.rejected}`,
+    `Ready: ${ready.length ? ready.join(', ') : '(none)'}`,
+  ]
+  if (mission.finalAudit) lines.push(`Final audit: ${mission.finalAudit.passed ? 'PASS' : 'BLOCKED'}${mission.finalAudit.gaps && mission.finalAudit.gaps.length ? ' gaps=' + mission.finalAudit.gaps.join('; ') : ''}`)
+  lines.push('Use mission_status(verbose=true) or mission_context(task_id=...) for detail.')
+  return lines.join('\n')
+}
+
 /**
  * Detect official DSH runtime coordination seams without hard-depending on
  * any of them. The mission file backend remains the source of truth; these
@@ -330,6 +348,9 @@ export function apply(ctx) {
         budget: { type: 'object', description: 'Optional { maxRounds?: number, maxHours?: number }.' },
         termination_policy: { type: 'string', enum: ['success', 'budget-or-success'], description: 'How the mission may end. "success" (default) refuses completion unless every mapped task has outcome=success. "budget-or-success" allows a partial report after the budget is exhausted.' },
         scope: { type: 'string', enum: ['workspace', 'session'], description: 'Default "workspace" inherits current behavior (shared by every session in the workspace). "session" pins this mission to the current session so other sessions in the same workspace keep their own mission view.' },
+        brief: { type: 'string', description: 'Optional detailed mission brief supplied by the user: constraints, decisions already made, exact file paths, interfaces, and anything the workers must not guess.' },
+        files: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'Optional mission-level file references: [{ path, description?, kind?, content? }]. Paths are passed to workers; content is an optional inline excerpt for small files.' },
+        review_policy: { type: 'string', enum: ['lite', 'strict'], description: 'Default "lite": low/standard scrutiny may use Captain quick-check or batch review; high keeps independent review. "strict" restores the old independent-review requirement for standard.' },
       },
       required: ['goal', 'success_criteria'],
       additionalProperties: false,
@@ -346,6 +367,9 @@ export function apply(ctx) {
         budget: args.budget,
         missionId: args.mission_id,
         terminationPolicy: args.termination_policy,
+        brief: args.brief,
+        files: args.files,
+        reviewPolicy: args.review_policy,
       })
       if (args.scope === 'session') {
         const sessionId = sessionIdOf(exec)
@@ -361,11 +385,12 @@ export function apply(ctx) {
   // ── mission_status ────────────────────────────────────────────────────────
   ctx.tools.register({
     name: 'mission_status',
-    description: 'Show the current mission state: goals, success criteria, task lifecycle, reviews, and final audit status.',
+    description: 'Show the current mission state. By default returns a compact summary (counts, ready queue, audit status); pass verbose=true for the full task/review listing.',
     parameters: {
       type: 'object',
       properties: {
         mission_id: { type: 'string', description: 'Optional mission id. Defaults to the latest mission in this workspace.' },
+        verbose: { type: 'boolean', description: 'When true, return the full statusText listing. Default false.' },
       },
       additionalProperties: false,
     },
@@ -373,7 +398,7 @@ export function apply(ctx) {
     async execute(args, exec) {
       const cwd = cwdOf(exec)
       const mission = requireMissionId(args, cwd, exec)
-      return statusText(mission)
+      return args.verbose === true ? statusText(mission) : compactStatusText(mission)
     },
   })
 
@@ -423,6 +448,52 @@ function readOfficialGoalView(ctx, exec) {
     output: textOutput('mission_capabilities result'),
     async execute(_args, _exec) {
       return JSON.stringify(detectOfficialCapabilities(ctx), null, 2)
+    },
+  })
+
+  // ── mission_metrics ───────────────────────────────────────────────────────
+  ctx.tools.register({
+    name: 'mission_metrics',
+    description: 'Report a rough character/token footprint for the mission: mission JSON size, task/artifact/wiki character counts, and ready queue width. Use this to see where prompt/token weight is going before dispatching workers.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mission_id: { type: 'string', description: 'Optional mission id. Defaults to the current session/workspace mission.' },
+      },
+      additionalProperties: false,
+    },
+    output: textOutput('mission_metrics result'),
+    async execute(args, exec) {
+      const cwd = cwdOf(exec)
+      const mission = requireMissionId(args, cwd, exec)
+      const artifacts = ensureArtifacts(mission)
+      const tasks = Object.values(mission.tasks || {})
+      const counts = { open: 0, active: 0, needs_review: 0, accepted: 0, rejected: 0 }
+      let ready = 0
+      for (const task of tasks) {
+        if (counts[task.status] !== undefined) counts[task.status] += 1
+        if (task.status === 'open' && !task.leaseBlocked && (task.dependencies || []).every((d) => mission.tasks[d] && mission.tasks[d].status === 'accepted')) ready += 1
+      }
+      const taskChars = tasks.reduce((sum, t) => sum + JSON.stringify(t).length, 0)
+      const artifactChars = artifacts.reduce((sum, a) => sum + String(a.path || '').length + String(a.summary || '').length, 0)
+      const root = memoryRoot(cwd)
+      const wikiFiles = existsSync(root) ? listMdFiles(root) : []
+      const wikiChars = wikiFiles.reduce((sum, file) => {
+        try { return sum + statSync(file).size } catch { return sum }
+      }, 0)
+      return JSON.stringify({
+        missionId: mission.id,
+        status: mission.status,
+        counts,
+        ready,
+        missionJsonChars: JSON.stringify(mission).length,
+        taskCount: tasks.length,
+        taskChars,
+        artifactCount: artifacts.length,
+        artifactChars,
+        wikiFileCount: wikiFiles.length,
+        wikiChars,
+      }, null, 2)
     },
   })
 
@@ -505,8 +576,19 @@ function buildWorkerPrompt(mission, task) {
   const lines = []
   lines.push(`Mission: ${mission.id} — ${mission.title || ''}`)
   lines.push(`Goal: ${(mission.goals || [])[0] || ''}`)
-  lines.push('Success criteria:')
-  for (const c of mission.successCriteria || []) lines.push(`- ${c}`)
+  if (mission.brief) {
+    lines.push('')
+    lines.push('Mission brief (user-supplied; follow closely):')
+    lines.push(String(mission.brief))
+  } else {
+    lines.push('Success criteria:')
+    for (const c of mission.successCriteria || []) lines.push(`- ${c}`)
+  }
+  if (mission.files && mission.files.length) {
+    lines.push('')
+    lines.push('Mission files:')
+    for (const f of mission.files) lines.push(`- ${f.path}${f.description ? ' — ' + f.description : ''}`)
+  }
   lines.push('')
   lines.push(`Task: ${task.id} [${task.status}] ${task.title}`)
   lines.push(`Kind: ${task.kind || '?'}`)
@@ -515,6 +597,14 @@ function buildWorkerPrompt(mission, task) {
     lines.push('')
     lines.push('Dispatch guidance (follow closely):')
     lines.push(String(task.guidance))
+  }
+  if (task.files && task.files.length) {
+    lines.push('')
+    lines.push('Task files:')
+    for (const f of task.files) {
+      lines.push(`- ${f.path}${f.description ? ' — ' + f.description : ''}${f.kind ? ' [' + f.kind + ']' : ''}`)
+      if (f.content) lines.push('  inline: ' + String(f.content).slice(0, 500))
+    }
   }
   if (task.acceptance && task.acceptance.length) {
     lines.push('')
@@ -537,9 +627,16 @@ function buildWorkerPrompt(mission, task) {
     for (const d of deps) lines.push(`- ${d.id} [${d.status}] ${d.title}`)
   }
   lines.push('')
+  lines.push('Compact handoff (fill/extend when publishing):')
+  lines.push('- Decisions:')
+  lines.push('- Interfaces / formats:')
+  lines.push('- Exact files/functions:')
+  lines.push('- Constraints / pitfalls:')
+  lines.push('- Evidence produced:')
+  lines.push('')
   lines.push('Worker protocol:')
   lines.push(`1. Call mission_claim(task_id="${task.id}"${task.assignee ? `, assignee="${task.assignee}"` : ''}) before working.`)
-  lines.push('2. Read required artifacts with mission_consume_artifacts or mission_context; do not rely on chat.')
+  lines.push('2. Read listed files/artifacts directly; do not rely on chat. If a file path is missing, report it instead of guessing.')
   lines.push('3. Publish durable outputs with mission_publish_artifact (typed, path, summary).')
   lines.push('4. When done, call mission_submit with evidence paths; do not mark your own review.')
   return lines.join('\n')
@@ -687,6 +784,7 @@ function buildMissionGoalObjective(mission) {
               replaces: { type: 'string', description: 'Optional id of a rejected task this new task supersedes. The rejected task will be marked superseded and can no longer block completion.' },
               requiredArtifacts: { type: 'array', items: { type: 'string' }, description: 'Optional artifact types that must already exist on the blackboard before this task can be claimed (e.g. research-brief, design, dataset, method-card). This is how research outputs gate downstream engineering.' },
               guidance: { type: 'string', description: 'Optional detailed dispatch guidance: code-level pointers, file paths, exact functions, constraints, and design notes that must be passed verbatim to the worker in the dispatch prompt. Use this to stop details from being lost between planning/research and implementation.' },
+              files: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'Optional task-level file references: [{ path, description?, kind?, content? }]. The worker plan includes these paths and optional excerpts.' },
               verificationPlan: {
                 type: 'object',
                 description: 'Domain-specific verification plan. Suggested fields: kind, requiredEvidence[], checkCommand, reviewerInstruction. The framework treats this as opaque data.',
@@ -724,6 +822,7 @@ function buildMissionGoalObjective(mission) {
         acceptance: { type: 'array', items: { type: 'string' }, description: 'Optional new acceptance criteria.' },
         verification_plan: { type: 'object', description: 'Optional new verificationPlan.' },
         guidance: { type: 'string', description: 'Optional replacement dispatch guidance.' },
+        files: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'Optional replacement task-level file references.' },
         kind: { type: 'string', enum: ['research', 'engineering', 'review', 'deliverable-style', 'synthesis', 'bookkeeping', 'coordination'], description: 'Optional new task kind.' },
         mission_id: { type: 'string', description: 'Optional mission id. Defaults to the latest mission.' },
       },
@@ -741,6 +840,7 @@ function buildMissionGoalObjective(mission) {
         verificationPlan: args.verification_plan,
         kind: args.kind,
         guidance: args.guidance,
+        files: args.files,
       })
       saveMission(cwd, mission)
       return `Updated ${args.task_id}\n\n${statusText(mission)}`
@@ -1197,17 +1297,19 @@ function buildMissionGoalObjective(mission) {
     },
   })
 
-  // ── mission_context: cross-role handoff pack ─────────────────────────────
+  // ── mission_context: compact, task-scoped handoff pack ───────────────────
   ctx.tools.register({
     name: 'mission_context',
-    description: 'Build a compact cross-role context pack: mission goal/success criteria, task DAG summary, blackboard artifacts (optionally filtered by type), and latest .memory summaries. Use this to hand research/design findings to engineers or other workers instead of relying on chat.',
+    description: 'Build a compact cross-role context pack. With task_id it returns only the focused task: brief, guidance, files, acceptance, dependencies, related artifacts, and matching wiki summaries. Without task_id it returns the mission overview. Use max_chars to bound output; use full=true only when the complete mission DAG is genuinely needed.',
     parameters: {
       type: 'object',
       properties: {
         role: { type: 'string', description: 'Optional role filter label (researcher/engineer/reviewer).' },
-        task_id: { type: 'string', description: 'Optional task id to include its full acceptance criteria.' },
-        artifact_types: { type: 'array', items: { type: 'string' }, description: 'Optional artifact type whitelist, e.g. research-brief, design, dataset.' },
+        task_id: { type: 'string', description: 'Optional focused task id. When set, unrelated tasks and artifacts are omitted.' },
+        artifact_types: { type: 'array', items: { type: 'string' }, description: 'Optional artifact type whitelist when no task_id is given.' },
         mission_id: { type: 'string', description: 'Optional mission id. Defaults to latest.' },
+        max_chars: { type: 'number', description: 'Output character cap (default 8000, max 20000).' },
+        full: { type: 'boolean', description: 'When true (default false), include the full mission DAG/artifact/wiki overview even with task_id.' },
       },
       additionalProperties: false,
     },
@@ -1216,44 +1318,121 @@ function buildMissionGoalObjective(mission) {
       const cwd = cwdOf(exec)
       const mission = requireMissionId(args, cwd, exec)
       const artifacts = ensureArtifacts(mission)
-      const typeFilter = Array.isArray(args.artifact_types) ? new Set(args.artifact_types.map(String)) : null
-      const list = artifacts.filter((a) => !typeFilter || typeFilter.has(a.type))
-      const lines = [
-        `Mission context pack for ${mission.id} [${mission.status}]`,
-        `Goal: ${(mission.goals || [])[0] || ''}`,
-        `Success criteria:`,
-      ]
-      for (const c of mission.successCriteria || []) lines.push(`- ${c}`)
-      lines.push('', `Tasks (${Object.keys(mission.tasks || {}).length}):`)
-      for (const t of Object.values(mission.tasks || {})) {
-        lines.push(`- ${t.id} [${t.status}] ${t.kind || ''} ${t.title}${t.assignee ? ` assignee=${t.assignee}` : ''}${(t.requiredArtifacts || []).length ? ` needs=${t.requiredArtifacts.join(',')}` : ''}`)
+      const maxChars = Math.max(800, Math.min(20000, Number(args.max_chars) || 8000))
+      const task = args.task_id && mission.tasks ? mission.tasks[args.task_id] : null
+      const focused = Boolean(task) && args.full !== true
+      const lines = []
+      const push = (line) => {
+        if (lines.join('\n').length < maxChars) lines.push(line)
       }
-      lines.push('', `Blackboard artifacts (${list.length}):`)
-      if (list.length === 0) lines.push('(none)')
-      else for (const a of list) lines.push(`- ${a.type} | ${a.path} | ${a.summary || ''} | from ${a.taskId}`)
-      if (args.task_id && mission.tasks && mission.tasks[args.task_id]) {
-        const t = mission.tasks[args.task_id]
-        lines.push('', `Focused task ${t.id}:`)
-        lines.push(`- assignee: ${t.assignee || '?'}`)
-        lines.push(`- acceptance:`)
-        for (const a of t.acceptance || []) lines.push(`  - ${a}`)
-        if (t.guidance) {
-          lines.push('', `Dispatch guidance (pass nearly verbatim to worker):`)
-          for (const g of String(t.guidance).split('\n')) lines.push(g)
+      push(`Mission context ${mission.id} [${mission.status}]`)
+      push(`Title: ${mission.title || ''}`)
+      push(`Goal: ${(mission.goals || [])[0] || ''}`)
+      if (mission.brief) {
+        push('')
+        push('Brief (user-supplied; follow closely):')
+        push(String(mission.brief))
+      }
+      if (!focused) {
+        push('')
+        push('Success criteria:')
+        for (const c of mission.successCriteria || []) push(`- ${c}`)
+      }
+      if (mission.files && mission.files.length) {
+        push('')
+        push('Mission files:')
+        for (const f of mission.files) push(`- ${f.path}${f.description ? ' — ' + f.description : ''}`)
+      }
+      if (focused) {
+        push('')
+        push(`Focused task ${task.id} [${task.status}] ${task.title}`)
+        push(`Kind/assignee: ${task.kind || '?'} / ${task.assignee || '?'}`)
+        if (task.guidance) {
+          push('')
+          push('Guidance (pass nearly verbatim to the worker):')
+          push(String(task.guidance))
         }
+        if (task.files && task.files.length) {
+          push('')
+          push('Task files:')
+          for (const f of task.files) {
+            push(`- ${f.path}${f.description ? ' — ' + f.description : ''}${f.kind ? ' [' + f.kind + ']' : ''}`)
+            if (f.content) push('  inline: ' + String(f.content).slice(0, 500))
+          }
+        }
+        if (task.acceptance && task.acceptance.length) {
+          push('')
+          push('Acceptance:')
+          for (const a of task.acceptance) push(`- ${a}`)
+        }
+        const deps = (task.dependencies || []).map((d) => mission.tasks[d]).filter(Boolean)
+        if (deps.length) {
+          push('')
+          push('Accepted dependencies:')
+          for (const d of deps) push(`- ${d.id} [${d.status}] ${d.title}`)
+        }
+        const required = task.requiredArtifacts || []
+        const relevantArtifacts = artifacts.filter((a) => {
+          if (required.length > 0) return required.includes(a.type)
+          if (Array.isArray(args.artifact_types)) return args.artifact_types.includes(a.type)
+          return false
+        })
+        if (relevantArtifacts.length) {
+          push('')
+          push('Related artifacts:')
+          for (const a of relevantArtifacts) push(`- ${a.type} | ${a.path} | ${a.summary || ''} | from ${a.taskId}`)
+        } else if (required.length) {
+          push('')
+          push(`Required artifacts not yet published: ${required.join(', ')}`)
+        }
+      } else {
+        const typeFilter = Array.isArray(args.artifact_types) ? new Set(args.artifact_types.map(String)) : null
+        const list = artifacts.filter((a) => !typeFilter || typeFilter.has(a.type))
+        push('')
+        push(`Tasks (${Object.keys(mission.tasks || {}).length}):`)
+        for (const t of Object.values(mission.tasks || {})) {
+          push(`- ${t.id} [${t.status}] ${t.kind || ''} ${t.title}${t.assignee ? ` assignee=${t.assignee}` : ''}`)
+        }
+        push('')
+        push(`Blackboard artifacts (${list.length}):`)
+        if (list.length === 0) push('(none)')
+        else for (const a of list) push(`- ${a.type} | ${a.path} | ${a.summary || ''} | from ${a.taskId}`)
       }
-      lines.push('', `Wiki summaries:`)
+      // Wiki: focused lookup by task/title tokens; otherwise a bounded list.
       const root = memoryRoot(cwd)
+      const wikiLines = []
       if (existsSync(root)) {
         const files = listMdFiles(root)
-        if (files.length === 0) lines.push('(empty)')
-        else for (const file of files.slice(0, 20)) {
-          const text = readFileSync(file, 'utf8')
-          const first = text.split('\n').slice(0, 6).join(' | ').slice(0, 180)
-          lines.push(`- ${file}\n  ${first}`)
+        if (focused && task) {
+          const tokens = String(task.title || '').toLowerCase().split(/[^a-z0-9\u4e00-\u9fff]+/i).filter((t) => t.length >= 3).slice(0, 8)
+          const scored = []
+          for (const file of files) {
+            const text = readFileSync(file, 'utf8')
+            let score = 0
+            for (const token of tokens) if (text.toLowerCase().includes(token)) score += 1
+            if (score > 0) scored.push({ file, score, text })
+          }
+          scored.sort((a, b) => b.score - a.score)
+          for (const item of scored.slice(0, 3)) {
+            const first = item.text.split('\n').slice(0, 8).join(' | ').slice(0, 260)
+            wikiLines.push(`- ${item.file}\n  ${first}`)
+          }
+        } else {
+          for (const file of files.slice(0, 20)) {
+            const text = readFileSync(file, 'utf8')
+            const first = text.split('\n').slice(0, 6).join(' | ').slice(0, 180)
+            wikiLines.push(`- ${file}\n  ${first}`)
+          }
         }
-      } else lines.push('(no .memory)')
-      return lines.join('\n')
+      }
+      if (wikiLines.length > 0) {
+        push('')
+        push('Matching wiki summaries:')
+        for (const line of wikiLines) push(line)
+      }
+      let out = lines.join('\n')
+      if (out.length > maxChars) out = out.slice(0, maxChars) + '\n…[truncated by mission_context max_chars]'
+      return out
     },
   })
 

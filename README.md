@@ -248,6 +248,21 @@ Web 界面的 `conversation.view` 视图环新增一个「任务」标签页，�
 | worker 交换数据 | `mission_publish_artifact` / `mission_consume_artifacts` |
 | 最终审计前 | `mission_blind_review` + `wiki_lint` |
 
+## Token 经济与 lite 审核
+
+默认 `mission_start` 使用 `review_policy: "lite"`：
+
+- `low`：Captain 快速检查，不建独立 reviewer；
+- `standard`：按里程碑/批次审核，优先一个 reviewer 审一批，不单独建 `final_reviewer`；
+- `high` 或 `reportPath`：保留独立评审、盲审与 final audit。
+
+派发时使用任务级裁剪，而不是重复整份 mission：
+
+- `mission_context(task_id=..., max_chars=...)`：只输出该任务的 brief、guidance、files、验收、依赖、相关 artifact 与匹配 wiki 摘要；
+- `mission_worker_plan`：生成包含 mission brief、任务 guidance/files、验收标准、必需产物和 worker protocol 的精简派发 prompt；
+- `mission_metrics`：查看 mission JSON、task/artifact/wiki 的字符量，定位 token 大头；
+- `mission_start` / `mission_add_tasks` 支持 `brief` 与 `files`，复杂任务可以把用户给出的详细说明和文件路径原样传给子代理。
+
 ## 与官方 DSH 0.1.5 能力的关系
 
 DSH `0.1.5` 新增了 Agent Teams、可继续子代理、`goal` / `ralph` 长任务等运行时能力。本套项目定位为**治理与验收层**：保留 mission 成功标准、独立评审、盲审、final audit、typed artifact blackboard、wiki memory；官方 `ctx.subagents` / `ctx.agentTeams` / `ctx.goals` 作为可选增强，通过 `mission_capabilities` 探测后按开关接入，不硬依赖 experimental 包。

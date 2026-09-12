@@ -25,11 +25,22 @@ export const TASK_KINDS = ['research', 'engineering', 'review', 'deliverable-sty
 export const MAX_CLAIM_ATTEMPTS = 3
 export const DEFAULT_LEASE_SECONDS = 7200
 
+function normalizeFileRef(file) {
+  if (typeof file === 'string') return { path: file, description: null, kind: null, content: null }
+  if (!file || typeof file !== 'object' || typeof file.path !== 'string') return null
+  return {
+    path: file.path,
+    description: file.description ? String(file.description) : null,
+    kind: file.kind ? String(file.kind) : null,
+    content: typeof file.content === 'string' ? file.content : null,
+  }
+}
+
 export function isCaptainAllowedKind(kind) {
   return kind === 'synthesis' || kind === 'bookkeeping' || kind === 'coordination'
 }
 
-export function createMission({ goal, successCriteria = [], success_criteria = null, title, budget = {}, missionId, terminationPolicy = 'success' }) {
+export function createMission({ goal, successCriteria = [], success_criteria = null, title, budget = {}, missionId, terminationPolicy = 'success', brief = '', files = [], reviewPolicy = 'lite' }) {
   if (!Array.isArray(successCriteria) || successCriteria.length === 0) {
     successCriteria = Array.isArray(success_criteria) ? success_criteria : []
   }
@@ -54,6 +65,9 @@ export function createMission({ goal, successCriteria = [], success_criteria = n
     goals: [goal],
     successCriteria: successCriteria.map(String),
     terminationPolicy,
+    brief: typeof brief === 'string' ? brief : '',
+    files: Array.isArray(files) ? files.map(normalizeFileRef).filter(Boolean) : [],
+    reviewPolicy: reviewPolicy === 'strict' ? 'strict' : 'lite',
     budget: {
       maxRounds: Number.isFinite(budget.maxRounds) ? budget.maxRounds : undefined,
       maxHours: Number.isFinite(budget.maxHours) ? budget.maxHours : undefined,
@@ -129,6 +143,7 @@ export function addTask(mission, task) {
     capabilities: Array.isArray(task.capabilities) ? task.capabilities.map(String) : [],
     requiredArtifacts: Array.isArray(task.requiredArtifacts) ? task.requiredArtifacts.map(String) : [],
     guidance: typeof task.guidance === 'string' ? task.guidance : (task.guidance ? String(task.guidance) : ''),
+    files: Array.isArray(task.files) ? task.files.map(normalizeFileRef).filter(Boolean) : [],
     scrutinyLevel: ['high', 'standard', 'low'].includes(task.scrutinyLevel) ? task.scrutinyLevel : 'standard',
     acceptance: task.acceptance.map(String),
     verificationPlan,
@@ -186,6 +201,10 @@ export function updateTask(mission, taskId, patch) {
   }
   if (patch.guidance !== undefined) {
     task.guidance = typeof patch.guidance === 'string' ? patch.guidance : String(patch.guidance || '')
+  }
+  if (patch.files !== undefined) {
+    if (!Array.isArray(patch.files)) throw new Error('files must be an array')
+    task.files = patch.files.map(normalizeFileRef).filter(Boolean)
   }
   if (patch.kind !== undefined) {
     if (typeof patch.kind !== 'string' || !TASK_KINDS.includes(patch.kind)) {
@@ -352,10 +371,11 @@ export function reviewTask(mission, taskId, { verdict, reviewer, reportPath, gap
     throw new Error('review requires a reviewer name')
   }
   const lowScrutiny = task.scrutinyLevel === 'low'
+  const captainQuickCheck = (mission.reviewPolicy || 'lite') === 'lite' && task.scrutinyLevel === 'standard'
   if (!lowScrutiny && task.assignee && reviewer === task.assignee) {
     throw new Error('self-review is forbidden: reviewer must differ from the task assignee')
   }
-  if (task.scrutinyLevel !== 'low' && reviewer === 'captain') {
+  if (task.scrutinyLevel !== 'low' && reviewer === 'captain' && !captainQuickCheck) {
     throw new Error('standard/high scrutiny tasks require an independent reviewer, not captain quick-check')
   }
   if (verdict === 'reject' && (!gap || String(gap).trim() === '')) {
@@ -600,6 +620,7 @@ export function summarizeTasks(mission) {
       dependencies: t.dependencies,
       requiredArtifacts: t.requiredArtifacts || [],
       guidance: t.guidance || '',
+      files: t.files || [],
       replaces: t.replaces || null,
       supersededBy: t.supersededBy || null,
       acceptance: t.acceptance,

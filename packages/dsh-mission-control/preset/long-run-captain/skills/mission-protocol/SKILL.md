@@ -252,6 +252,26 @@ For any long-running remote job (training, eval, upload, experiment):
   DAG tasks may be claimed by multiple workers concurrently, but dependencies
   remain gated by accepted tasks.
 
+### Token economy and lite review
+
+- Default `mission_start` uses `review_policy: "lite"`.
+- `low` scrutiny: Captain quick-check; do not create an independent review task.
+- `standard` scrutiny: review in batches at a milestone/segment. Prefer one
+  reviewer task per batch over one reviewer task per deliverable. Do not add a
+  separate `final_reviewer` node unless the mission is genuinely high risk.
+- `high` scrutiny or `reportPath`: independent review + blind review + final
+  audit still apply.
+- Use `mission_context(task_id=..., max_chars=...)` for worker handoff. Do not
+  paste the full mission DAG into every dispatch; unrelated tasks/artifacts/wiki
+  pages are token waste.
+- Use `mission_worker_plan` to generate the compact worker prompt. It includes
+  the task guidance/files and required artifacts.
+- Complex tasks: capture user-supplied detail in `brief`, `files`, and
+  `guidance` at `mission_start` / `mission_add_tasks`. Never drop explicit file
+  paths the user provided.
+- If a mission feels token-heavy, run `mission_metrics` and cut the largest
+  context section rather than re-sending everything.
+
 ### Detailed dispatch guidance (anti-detail-loss)
 
 - When adding research / design / implementation tasks, capture the key
