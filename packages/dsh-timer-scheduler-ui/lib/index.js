@@ -22,6 +22,14 @@ export const inject = ['tools', 'timer', 'agents']
 
 const MAX_TIMEOUT = 2147483647
 
+function isNetworkError(err) {
+  const code = String((err && (err.code || (err.cause && err.cause.code))) || '')
+  const networkCodes = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'EHOSTUNREACH', 'ENETUNREACH', 'ECONNABORTED', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_SOCKET', 'ERR_SOCKET_CONNECTION_TIMEOUT']
+  if (networkCodes.includes(code)) return true
+  const msg = String((err && err.message) || err || '').toLowerCase()
+  return /network|offline|fetch failed|socket hang up|connection reset|getaddrinfo|dns|timed? ?out|timeout/.test(msg)
+}
+
 function home() {
   if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME.length > 0) return process.env.DSH_HOME
   if (typeof process.env.HOME === 'string' && process.env.HOME.length > 0) return join(process.env.HOME, '.dsh')
@@ -87,7 +95,7 @@ export function apply(ctx) {
   function persist() {
     const list = []
     for (const entry of pending.values()) {
-      list.push({ id: entry.id, note: entry.note, dueMs: entry.dueMs, sessionId: entry.sessionId, ...(entry.subject ? { subject: entry.subject } : {}), ...(entry.parentSession ? { parentSession: entry.parentSession } : {}), missed: Boolean(entry.missed), attempts: Number(entry.attempts || 0), lastAttemptAt: entry.lastAttemptAt || null, delivering: Boolean(entry.delivering), deliveryUncertain: Boolean(entry.deliveryUncertain) })
+      list.push({ id: entry.id, note: entry.note, dueMs: entry.dueMs, sessionId: entry.sessionId, ...(entry.subject ? { subject: entry.subject } : {}), ...(entry.parentSession ? { parentSession: entry.parentSession } : {}), missed: Boolean(entry.missed), attempts: Number(entry.attempts || 0), lastAttemptAt: entry.lastAttemptAt || null, delivering: Boolean(entry.delivering), deliveryUncertain: Boolean(entry.deliveryUncertain), networkBlocked: Boolean(entry.networkBlocked), needsManualRetry: Boolean(entry.needsManualRetry), immediateRetries: Number(entry.immediateRetries || 0), lastError: entry.lastError || null })
     }
     saveReminders(list)
   }
@@ -133,9 +141,32 @@ export function apply(ctx) {
       entry.delivering = false
       entry.deliveryUncertain = false
       entry.missed = true
+      entry.lastError = String((err && err.message) || err)
+      const network = isNetworkError(err)
+      if (network) {
+        entry.networkBlocked = true
+        entry.needsManualRetry = true
+        persist()
+        console.warn(`timer-scheduler: network failure (${kind}) for ${entry.id}; no auto retry, manual retry required: ${entry.lastError}`)
+        return
+      }
+      entry.networkBlocked = false
+      const immediateRetries = Number(entry.immediateRetries || 0)
+      if (immediateRetries < 1) {
+        entry.immediateRetries = immediateRetries + 1
+        entry.needsManualRetry = false
+        persist()
+        console.warn(`timer-scheduler: non-network failure (${kind}) for ${entry.id}; retrying immediately: ${entry.lastError}`)
+        if (entry.retryTimer) { entry.retryTimer(); entry.retryTimer = null }
+        entry.retryTimer = ctx.timeout(() => {
+          entry.retryTimer = null
+          fire(entry)
+        }, 0)
+        return
+      }
+      entry.needsManualRetry = true
       persist()
-      console.warn(`timer-scheduler: reminder delivery failed (${kind}) for ${entry.id}: ${String((err && err.message) || err)}`)
-      scheduleRetry(entry)
+      console.warn(`timer-scheduler: non-network failure persisted (${kind}) for ${entry.id}; manual retry required: ${entry.lastError}`)
     }
     const deliver = (agent) => {
       try {
@@ -207,8 +238,10 @@ export function apply(ctx) {
   }
 
   function arm(entry) {
+    if (entry.deliveryUncertain || entry.networkBlocked || entry.needsManualRetry) return
     function tick() {
       if (entry.retryTimer) { entry.retryTimer(); entry.retryTimer = null }
+      if (entry.deliveryUncertain || entry.networkBlocked || entry.needsManualRetry) return
       const remaining = entry.dueMs - Date.now()
       if (remaining <= 0) {
         entry.cancel = null
@@ -221,7 +254,7 @@ export function apply(ctx) {
   }
 
   function schedule(note, dueMs, sessionId, subject, parentSession) {
-    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null, deliveryUncertain: false }
+    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null, deliveryUncertain: false, networkBlocked: false, needsManualRetry: false, immediateRetries: 0, lastError: null }
     pending.set(entry.id, entry)
     persist()
     arm(entry)
@@ -304,10 +337,10 @@ export function apply(ctx) {
   // armed too: they fire immediately after restart instead of being dropped.
   for (const r of loadReminders()) {
     const wasDelivering = Boolean(r.delivering)
-    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null, retryTimer: null, delivering: false, missed: Boolean(r.missed) || wasDelivering, attempts: Number(r.attempts || 0), lastAttemptAt: r.lastAttemptAt || null, deliveryUncertain: wasDelivering || Boolean(r.deliveryUncertain) }
+    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null, retryTimer: null, delivering: false, missed: Boolean(r.missed) || wasDelivering, attempts: Number(r.attempts || 0), lastAttemptAt: r.lastAttemptAt || null, deliveryUncertain: wasDelivering || Boolean(r.deliveryUncertain), networkBlocked: Boolean(r.networkBlocked), needsManualRetry: Boolean(r.needsManualRetry), immediateRetries: Number(r.immediateRetries || 0), lastError: r.lastError || null }
     pending.set(entry.id, entry)
-    if (entry.deliveryUncertain) {
-      console.warn(`timer-scheduler: reminder ${entry.id} was mid-delivery on restart; not re-injecting to avoid duplicate context. Use retry_reminder to force.`)
+    if (entry.deliveryUncertain || entry.networkBlocked || entry.needsManualRetry) {
+      console.warn(`timer-scheduler: reminder ${entry.id} requires manual retry (${entry.deliveryUncertain ? 'delivery-uncertain' : entry.networkBlocked ? 'network-blocked' : 'previous-failure'}); not auto-injecting.`)
       persist()
     } else {
       arm(entry)
@@ -389,7 +422,7 @@ export function apply(ctx) {
       const items = []
       for (const e of pending.values()) {
         const remain = Math.max(0, Math.round((e.dueMs - nowMs) / 1000))
-        const state = e.deliveryUncertain ? '投递状态不确定，未重复注入（可用 retry_reminder 手动重试）' : e.missed ? '未及时触发，等待重试' : (Date.now() >= e.dueMs ? '已到点，等待触发' : `约 ${remain}s`)
+        const state = e.deliveryUncertain ? '投递状态不确定，未重复注入（可用 retry_reminder 手动重试）' : e.networkBlocked ? '网络原因未发送，等待人工重试' : e.needsManualRetry ? '未发送，等待人工重试' : e.missed ? '未及时触发，等待重试' : (Date.now() >= e.dueMs ? '已到点，等待触发' : `约 ${remain}s`)
         items.push(`- ${e.id}${e.subject ? ` [${e.subject}]` : ''} ${state} 到点 ${iso(e.dueMs)}${e.attempts ? ` attempts=${e.attempts}` : ''}\n  ${e.note}`)
       }
       return items.length === 0 ? '暂无待触发的定时提醒' : `待触发的定时提醒（${items.length} 条）:\n${items.join('\n')}`
@@ -413,6 +446,9 @@ export function apply(ctx) {
       const entry = pending.get(args.id)
       if (entry === undefined) return `未找到提醒 ${args.id}`
       entry.deliveryUncertain = false
+      entry.networkBlocked = false
+      entry.needsManualRetry = false
+      entry.immediateRetries = Number(entry.immediateRetries || 0)
       entry.delivering = false
       entry.missed = true
       fire(entry)
@@ -453,7 +489,7 @@ export function apply(ctx) {
             ? []
             : [...pending.values()]
               .filter((e) => e.sessionId === sessionId)
-              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs, missed: Boolean(e.missed), attempts: Number(e.attempts || 0), lastAttemptAt: e.lastAttemptAt || null, deliveryUncertain: Boolean(e.deliveryUncertain) }))
+              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs, missed: Boolean(e.missed), attempts: Number(e.attempts || 0), lastAttemptAt: e.lastAttemptAt || null, deliveryUncertain: Boolean(e.deliveryUncertain), networkBlocked: Boolean(e.networkBlocked), needsManualRetry: Boolean(e.needsManualRetry), lastError: e.lastError || null }))
           res.writeHead(200, {
             'Content-Type': 'application/json; charset=utf-8',
             'Cache-Control': 'no-store',
