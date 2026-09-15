@@ -121,10 +121,15 @@ window.__ModuleLoader__.load({
         var rows = reminders.map(function (r) {
           var dueMs = typeof r.dueMs === 'number' ? r.dueMs : 0
           var remainMs = Math.max(0, dueMs - now)
+          var overdue = Boolean(r.missed) || (dueMs > 0 && dueMs <= now)
+          var statusText = overdue
+            ? '\u23F0 \u672a\u53ca\u65f6\u89e6\u53d1\uff0c\u7b49\u5f85\u8865\u89e6\u53d1'
+            : '\u5269\u4f59 ' + fmt(remainMs)
+          if (overdue && r.attempts) statusText += ' \u00b7 \u5c1d\u8bd5 ' + r.attempts
           return React.createElement('li', { key: r.id, className: 'dsh-sched-row' },
             React.createElement('div', { className: 'dsh-sched-grow' },
               React.createElement('div', { className: 'dsh-sched-note' }, r.note),
-              React.createElement('div', { className: 'dsh-sched-meta' }, '\u5269\u4f59 ' + fmt(remainMs)),
+              React.createElement('div', { className: 'dsh-sched-meta' }, statusText),
             ),
           )
         })

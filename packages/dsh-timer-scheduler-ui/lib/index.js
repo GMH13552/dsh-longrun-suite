@@ -87,7 +87,7 @@ export function apply(ctx) {
   function persist() {
     const list = []
     for (const entry of pending.values()) {
-      list.push({ id: entry.id, note: entry.note, dueMs: entry.dueMs, sessionId: entry.sessionId, ...(entry.subject ? { subject: entry.subject } : {}), ...(entry.parentSession ? { parentSession: entry.parentSession } : {}) })
+      list.push({ id: entry.id, note: entry.note, dueMs: entry.dueMs, sessionId: entry.sessionId, ...(entry.subject ? { subject: entry.subject } : {}), ...(entry.parentSession ? { parentSession: entry.parentSession } : {}), missed: Boolean(entry.missed), attempts: Number(entry.attempts || 0), lastAttemptAt: entry.lastAttemptAt || null })
     }
     saveReminders(list)
   }
@@ -96,24 +96,52 @@ export function apply(ctx) {
   const resumed = new Map()
 
   function fire(entry) {
-    if (pending.delete(entry.id)) persist()
+    if (entry.delivering) return
+    entry.delivering = true
+    entry.attempts = Number(entry.attempts || 0) + 1
+    entry.lastAttemptAt = Date.now()
+    const now = Date.now()
+    const lateMs = Math.max(0, now - entry.dueMs)
+    const missed = lateMs > 5000 || entry.missed === true
+    entry.missed = missed
     const sessionId = entry.sessionId
     const parentSession = entry.parentSession
     const note = entry.note
-    const summary = '\u23F0 ' + (note.length > 110 ? note.slice(0, 109) + '\u2026' : note)
-    const text = '\u23F0 定时提醒触发（这是你之前给自己安排的检查）：\n\n' + note + '\n\n现在请自主去查看/处理这件事，完成后向用户汇报结果。'
+    const scheduledIso = iso(entry.dueMs)
+    const currentIso = iso(now)
+    const lateText = lateMs >= 60000 ? Math.round(lateMs / 60000) + ' 分钟' : Math.round(lateMs / 1000) + ' 秒'
+    const text = missed
+      ? '\u23F0 定时提醒补触发（未及时触发）\n\n原定时间：' + scheduledIso + '\n当前时间：' + currentIso + '\n状态：未及时触发，已延迟约 ' + lateText + '，现在补触发\n\n提醒内容：' + note + '\n\n请现在自主去查看/处理这件事，完成后向用户汇报结果。'
+      : '\u23F0 定时提醒触发（这是你之前给自己安排的检查）：\n\n' + note + '\n\n现在请自主去查看/处理这件事，完成后向用户汇报结果。'
+    const summary = '\u23F0 ' + (missed ? '补触发：' : '') + (note.length > 100 ? note.slice(0, 99) + '\u2026' : note)
     const message = {
       id: makeId(),
       role: 'user',
       content: [{ type: 'text', text }],
       source: { kind: 'plugin', plugin: 'timer-scheduler', form: 'notice', summary },
     }
+    function succeed() {
+      if (entry.retryTimer) { entry.retryTimer(); entry.retryTimer = null }
+      entry.cancel = null
+      entry.delivering = false
+      if (pending.delete(entry.id)) persist()
+      console.log(`timer-scheduler: fired reminder ${JSON.stringify(summary)}`)
+    }
+    function fail(err, kind) {
+      entry.delivering = false
+      entry.missed = true
+      persist()
+      console.warn(`timer-scheduler: reminder delivery failed (${kind}) for ${entry.id}: ${String((err && err.message) || err)}`)
+      scheduleRetry(entry)
+    }
     const deliver = (agent) => {
       try {
         agent.followup(message)
-        console.log(`timer-scheduler: fired reminder ${JSON.stringify(summary)}`)
+        succeed()
+        return true
       } catch (err) {
-        console.error('timer-scheduler: failed to deliver reminder:', err)
+        fail(err, 'followup')
+        return false
       }
     }
     const deliverToParent = () => {
@@ -121,8 +149,7 @@ export function apply(ctx) {
       const liveParent = ctx.agents.get(parentSession)
       if (liveParent !== undefined) {
         console.log(`timer-scheduler: session ${sessionId} not live; delivering reminder to live parent ${parentSession}`)
-        deliver(liveParent)
-        return true
+        return deliver(liveParent)
       }
       console.warn(`timer-scheduler: parent ${parentSession} is not live; NOT cold-resuming an archived parent for reminder from ${sessionId}`)
       logDeliveryError('parent-not-live', sessionId, parentSession, new Error('parent session not live; archived parent not resumed'))
@@ -133,8 +160,6 @@ export function apply(ctx) {
       deliver(live)
       return
     }
-    // Cold resume the intended session first; if that fails (e.g. a settled
-    // subagent that cannot be resumed as a root), fall back to its parent.
     void (async () => {
       try {
         const selection = ctx.get('agentDefaultModel')?.currentSelection?.()
@@ -152,10 +177,10 @@ export function apply(ctx) {
       } catch (err) {
         console.warn(`timer-scheduler: cold resume failed for ${sessionId}; trying parent fallback: ${String((err && err.message) || err)}`)
         logDeliveryError('cold-resume-failed', sessionId, parentSession, err)
-        deliverToParent()
+        if (!deliverToParent()) fail(err, 'cold-resume')
       }
     })().catch((err) => {
-      console.warn(`timer-scheduler: reminder delivery failed for ${sessionId}: ${String((err && err.message) || err)}`)
+      fail(err, 'async')
     })
   }
 
@@ -166,8 +191,21 @@ export function apply(ctx) {
     }
   }, 'timer-scheduler-ui: cold-resumed handles')
 
+  function scheduleRetry(entry) {
+    if (entry.retryTimer) return
+    if (entry.cancel) { entry.cancel(); entry.cancel = null }
+    const attempts = Number(entry.attempts || 0)
+    const delay = Math.min(5 * 60 * 1000, Math.max(10 * 1000, 10 * 1000 * Math.pow(2, Math.max(0, attempts - 1))))
+    entry.retryTimer = ctx.timeout(() => {
+      entry.retryTimer = null
+      fire(entry)
+    }, delay)
+    console.warn(`timer-scheduler: will retry reminder ${entry.id} in ${Math.round(delay / 1000)}s`)
+  }
+
   function arm(entry) {
     function tick() {
+      if (entry.retryTimer) { entry.retryTimer(); entry.retryTimer = null }
       const remaining = entry.dueMs - Date.now()
       if (remaining <= 0) {
         entry.cancel = null
@@ -180,7 +218,7 @@ export function apply(ctx) {
   }
 
   function schedule(note, dueMs, sessionId, subject, parentSession) {
-    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null }
+    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null }
     pending.set(entry.id, entry)
     persist()
     arm(entry)
@@ -191,6 +229,7 @@ export function apply(ctx) {
     const entry = pending.get(id)
     if (entry === undefined) return false
     if (typeof entry.cancel === 'function') entry.cancel()
+    if (typeof entry.retryTimer === 'function') entry.retryTimer()
     pending.delete(id)
     persist()
     return true
@@ -261,7 +300,7 @@ export function apply(ctx) {
   // Re-arm persisted reminders on startup. Overdue reminders are kept and
   // armed too: they fire immediately after restart instead of being dropped.
   for (const r of loadReminders()) {
-    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null }
+    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null, retryTimer: null, delivering: false, missed: Boolean(r.missed), attempts: Number(r.attempts || 0), lastAttemptAt: r.lastAttemptAt || null }
     pending.set(entry.id, entry)
     arm(entry)
   }
@@ -341,7 +380,8 @@ export function apply(ctx) {
       const items = []
       for (const e of pending.values()) {
         const remain = Math.max(0, Math.round((e.dueMs - nowMs) / 1000))
-        items.push(`- ${e.id}${e.subject ? ` [${e.subject}]` : ''} 到点 ${iso(e.dueMs)}（约 ${remain}s）\n  ${e.note}`)
+        const state = e.missed ? '未及时触发，等待重试' : (Date.now() >= e.dueMs ? '已到点，等待触发' : `约 ${remain}s`)
+        items.push(`- ${e.id}${e.subject ? ` [${e.subject}]` : ''} ${state} 到点 ${iso(e.dueMs)}${e.attempts ? ` attempts=${e.attempts}` : ''}\n  ${e.note}`)
       }
       return items.length === 0 ? '暂无待触发的定时提醒' : `待触发的定时提醒（${items.length} 条）:\n${items.join('\n')}`
     },
@@ -380,7 +420,7 @@ export function apply(ctx) {
             ? []
             : [...pending.values()]
               .filter((e) => e.sessionId === sessionId)
-              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs }))
+              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs, missed: Boolean(e.missed), attempts: Number(e.attempts || 0), lastAttemptAt: e.lastAttemptAt || null }))
           res.writeHead(200, {
             'Content-Type': 'application/json; charset=utf-8',
             'Cache-Control': 'no-store',
