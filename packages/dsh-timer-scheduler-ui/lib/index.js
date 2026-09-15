@@ -87,7 +87,7 @@ export function apply(ctx) {
   function persist() {
     const list = []
     for (const entry of pending.values()) {
-      list.push({ id: entry.id, note: entry.note, dueMs: entry.dueMs, sessionId: entry.sessionId, ...(entry.subject ? { subject: entry.subject } : {}), ...(entry.parentSession ? { parentSession: entry.parentSession } : {}), missed: Boolean(entry.missed), attempts: Number(entry.attempts || 0), lastAttemptAt: entry.lastAttemptAt || null })
+      list.push({ id: entry.id, note: entry.note, dueMs: entry.dueMs, sessionId: entry.sessionId, ...(entry.subject ? { subject: entry.subject } : {}), ...(entry.parentSession ? { parentSession: entry.parentSession } : {}), missed: Boolean(entry.missed), attempts: Number(entry.attempts || 0), lastAttemptAt: entry.lastAttemptAt || null, delivering: Boolean(entry.delivering), deliveryUncertain: Boolean(entry.deliveryUncertain) })
     }
     saveReminders(list)
   }
@@ -100,6 +100,8 @@ export function apply(ctx) {
     entry.delivering = true
     entry.attempts = Number(entry.attempts || 0) + 1
     entry.lastAttemptAt = Date.now()
+    entry.deliveryUncertain = false
+    persist()
     const now = Date.now()
     const lateMs = Math.max(0, now - entry.dueMs)
     const missed = lateMs > 5000 || entry.missed === true
@@ -129,6 +131,7 @@ export function apply(ctx) {
     }
     function fail(err, kind) {
       entry.delivering = false
+      entry.deliveryUncertain = false
       entry.missed = true
       persist()
       console.warn(`timer-scheduler: reminder delivery failed (${kind}) for ${entry.id}: ${String((err && err.message) || err)}`)
@@ -218,7 +221,7 @@ export function apply(ctx) {
   }
 
   function schedule(note, dueMs, sessionId, subject, parentSession) {
-    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null }
+    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null, deliveryUncertain: false }
     pending.set(entry.id, entry)
     persist()
     arm(entry)
@@ -300,9 +303,15 @@ export function apply(ctx) {
   // Re-arm persisted reminders on startup. Overdue reminders are kept and
   // armed too: they fire immediately after restart instead of being dropped.
   for (const r of loadReminders()) {
-    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null, retryTimer: null, delivering: false, missed: Boolean(r.missed), attempts: Number(r.attempts || 0), lastAttemptAt: r.lastAttemptAt || null }
+    const wasDelivering = Boolean(r.delivering)
+    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null, retryTimer: null, delivering: false, missed: Boolean(r.missed) || wasDelivering, attempts: Number(r.attempts || 0), lastAttemptAt: r.lastAttemptAt || null, deliveryUncertain: wasDelivering || Boolean(r.deliveryUncertain) }
     pending.set(entry.id, entry)
-    arm(entry)
+    if (entry.deliveryUncertain) {
+      console.warn(`timer-scheduler: reminder ${entry.id} was mid-delivery on restart; not re-injecting to avoid duplicate context. Use retry_reminder to force.`)
+      persist()
+    } else {
+      arm(entry)
+    }
   }
 
   function parseClock(s, nowMs) {
@@ -380,10 +389,34 @@ export function apply(ctx) {
       const items = []
       for (const e of pending.values()) {
         const remain = Math.max(0, Math.round((e.dueMs - nowMs) / 1000))
-        const state = e.missed ? '未及时触发，等待重试' : (Date.now() >= e.dueMs ? '已到点，等待触发' : `约 ${remain}s`)
+        const state = e.deliveryUncertain ? '投递状态不确定，未重复注入（可用 retry_reminder 手动重试）' : e.missed ? '未及时触发，等待重试' : (Date.now() >= e.dueMs ? '已到点，等待触发' : `约 ${remain}s`)
         items.push(`- ${e.id}${e.subject ? ` [${e.subject}]` : ''} ${state} 到点 ${iso(e.dueMs)}${e.attempts ? ` attempts=${e.attempts}` : ''}\n  ${e.note}`)
       }
       return items.length === 0 ? '暂无待触发的定时提醒' : `待触发的定时提醒（${items.length} 条）:\n${items.join('\n')}`
+    },
+  })
+
+  ctx.tools.register({
+    name: 'retry_reminder',
+    description: 'Force a missed or delivery-uncertain reminder to fire again. Use only after confirming the earlier attempt did not already reach the session; this may inject the reminder a second time.',
+    parameters: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'The reminder id to retry.' } },
+      required: ['id'],
+      additionalProperties: false,
+    },
+    output: {
+      schema: { type: 'string' },
+      render: (_args, value) => [{ type: 'text', text: value }],
+    },
+    async execute(args) {
+      const entry = pending.get(args.id)
+      if (entry === undefined) return `未找到提醒 ${args.id}`
+      entry.deliveryUncertain = false
+      entry.delivering = false
+      entry.missed = true
+      fire(entry)
+      return `已触发提醒重试 ${entry.id}（如果之前已注入，可能产生重复上下文）`
     },
   })
 
@@ -420,7 +453,7 @@ export function apply(ctx) {
             ? []
             : [...pending.values()]
               .filter((e) => e.sessionId === sessionId)
-              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs, missed: Boolean(e.missed), attempts: Number(e.attempts || 0), lastAttemptAt: e.lastAttemptAt || null }))
+              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs, missed: Boolean(e.missed), attempts: Number(e.attempts || 0), lastAttemptAt: e.lastAttemptAt || null, deliveryUncertain: Boolean(e.deliveryUncertain) }))
           res.writeHead(200, {
             'Content-Type': 'application/json; charset=utf-8',
             'Cache-Control': 'no-store',

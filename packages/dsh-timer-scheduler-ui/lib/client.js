@@ -122,10 +122,12 @@ window.__ModuleLoader__.load({
           var dueMs = typeof r.dueMs === 'number' ? r.dueMs : 0
           var remainMs = Math.max(0, dueMs - now)
           var overdue = Boolean(r.missed) || (dueMs > 0 && dueMs <= now)
-          var statusText = overdue
-            ? '\u23F0 \u672a\u53ca\u65f6\u89e6\u53d1\uff0c\u7b49\u5f85\u8865\u89e6\u53d1'
-            : '\u5269\u4f59 ' + fmt(remainMs)
-          if (overdue && r.attempts) statusText += ' \u00b7 \u5c1d\u8bd5 ' + r.attempts
+          var statusText = r.deliveryUncertain
+            ? '\u26A0\uFE0F \u6295\u9012\u72b6\u6001\u4e0d\u786e\u5b9a\uff0c\u672a\u91cd\u590d\u6ce8\u5165'
+            : overdue
+              ? '\u23F0 \u672a\u53ca\u65f6\u89e6\u53d1\uff0c\u7b49\u5f85\u8865\u89e6\u53d1'
+              : '\u5269\u4f59 ' + fmt(remainMs)
+          if (overdue && !r.deliveryUncertain && r.attempts) statusText += ' \u00b7 \u5c1d\u8bd5 ' + r.attempts
           return React.createElement('li', { key: r.id, className: 'dsh-sched-row' },
             React.createElement('div', { className: 'dsh-sched-grow' },
               React.createElement('div', { className: 'dsh-sched-note' }, r.note),
