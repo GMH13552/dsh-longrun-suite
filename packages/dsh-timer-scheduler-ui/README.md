@@ -108,6 +108,12 @@ The header reminder menu shows the countdown while reminders are pending and hid
 - Reminders that become due while the DSH process is down are re-armed on startup and fire immediately (instead of being skipped).
 - Delays beyond ~24.8 days are chunked, so they work, but the mechanism is "in-process timer + disk snapshot"; the timer only needs the process to stay up to fire.
 
+## Installing into a profile
+
+`node scripts/sync-profile.mjs [profile-dir]` copies `lib/` into both installed copies (`packages/…` and `node_modules/…`) **and into the root aliases** `index.js` / `client.js`.
+
+That last part is not cosmetic. The host loader resolves the bundle name to the package directory and can prefer a root `index.js` when one exists, so a stale root alias makes the profile keep running old host code after a restart while `lib/` looks current — the visible symptom is a menu action that returns HTTP 200 and does nothing, because the old handler ignores the request method. Always sync through the script (or copy both layouts) after editing `lib/`.
+
 ## Tests
 
 `node test/delivery.mjs` runs the delivery-contract regression suite against a fake host: live session, cold forked session with preset restoration, deleted preset, transient factory-missing retry, cold subagent child with an offline parent, and cold subagent child with a live parent. It asserts that a reminder never reroutes to a parent/branch session.

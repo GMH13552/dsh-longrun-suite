@@ -11,6 +11,7 @@
   },
   "files": [
     "lib",
+    "scripts",
     "test",
     "cordis.patch.yml",
     "README.md",
@@ -67,6 +68,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node test/delivery.mjs"
+    "test": "node test/delivery.mjs",
+    "sync:profile": "node scripts/sync-profile.mjs"
   }
 }

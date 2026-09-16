@@ -109,6 +109,12 @@ DeepSeek Harness（DSH）插件：给 agent 一个**自主定时器**——让�
 - DSH 进程停机期间到期的提醒，会在重启后重新 arm 并立即触发，而不是被跳过。
 - 超过约 24.8 天的定时用分段续期实现，理论支持；但提醒是「进程内 timer + 磁盘快照」的混合，进程长时间不重启即可正常触发。
 
+## 装进 profile
+
+`node scripts/sync-profile.mjs [profile目录]` 会把 `lib/` 同步到 profile 里的两份安装副本（`packages/…` 与 `node_modules/…`），**同时写根别名 `index.js` / `client.js`**。
+
+这一步不是多余的：host loader 解析 bundle 名时是按包目录找入口，**存在根 `index.js` 时会优先读它**。所以一旦根别名是旧快照，重启后 host 依旧跑旧代码，而 `lib/` 看起来是新的——症状就是菜单按钮返回 HTTP 200 但毫无反应（旧 handler 直接忽略请求方法，把 POST 当列表请求答了）。改完 `lib/` 一定用这个脚本同步（或两套布局都覆盖）。
+
 ## 测试
 
 `node test/delivery.mjs` 用假 host 跑投递契约回归：live 会话、fork 冷会话按原预设恢复、预设被删、factory 未加载的瞬时重试、子代理子会话父离线、子代理子会话父在线。断言提醒**永不**改投父会话/分支会话。
