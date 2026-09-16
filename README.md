@@ -67,7 +67,7 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 |---|---|---|---|
 | dsh-mission-control | `packages/dsh-mission-control` | `dsh-mission-control` | 0.2.0 |
 | llm-as-a-verifier | `packages/dsh-plugin-llm-verifier` | `llm-verifier` | 0.9.0 |
-| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.0 |
+| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.1 |
 
 每个子包 `package.json` 都声明了精确的 DSH 兼容矩阵：
 
@@ -281,7 +281,7 @@ Host / 插件层
 │   ├── lib/client.js        # Web 任务可视化视图标签页（conversation.view「任务」）
 │   ├── bin/mission_check.mjs
 │   └── preset/              # Captain 预设与协议技能
-├── dsh-timer-scheduler-ui    # 定时唤醒 + 提醒自动取消 + 父会话回退
+├── dsh-timer-scheduler-ui    # 定时唤醒 + 提醒自动取消 + 同会话冷恢复（非父会话回退）
 └── dsh-plugin-llm-verifier   # LLM-as-a-Verifier
 
 Agent / 预设层
@@ -402,7 +402,7 @@ cp -R preset/long-run-router   "$HOME/.dsh/.agent-presets/long-run-router"
 ## 已知边界
 
 - DSH 流式接口不暴露 logprobs，所以 LLM verifier 用温度采样平均近似论文的 logits 期望；
-- `schedule_reminder` 目前只在 session live 时唤醒；跨重启冷恢复是后续方向；
+- `schedule_reminder` 跨重启冷恢复的是**同一个会话**：普通会话按其持久化 `agentPreset` 挂载原组合（工具集不丢），session-backed 子代理子会话经其仍在线的直接父会话走 `ctx.subagents.sendMessage`。预设被删/父会话离线时提醒停在待人工重试，不会转投给分支之前的父会话；
 - 独立评审是流程约束，不是沙箱隔离。
 - Claim Pool / Lease 是文件级实现（mission.json + 时间戳），不是独立服务；租约过期自动回收，连续 3 次回收自动 blocked。
 - Capability Matching 是 tag 集合匹配，不内置领域词表；每个 workspace 需自行维护 `.memory/_capabilities.md`，否则标签可能不一致。

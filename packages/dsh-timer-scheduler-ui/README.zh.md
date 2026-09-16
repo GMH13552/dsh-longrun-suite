@@ -87,16 +87,28 @@ DeepSeek Harness（DSH）插件：给 agent 一个**自主定时器**——让�
 ## 工作机制
 
 1. agent 调 `schedule_reminder`，host 插件用 Cordis `timer` 排一个一次性定时器，并把 `{id, note, dueMs, sessionId, subject?}` 写入 `~/.dsh/timer-reminders.json`。
-2. 到点时，host 插件先通过 `agents.get(sessionId)` 找 live agent；如果不在内存，则通过 `ctx.agents.resume()` 冷恢复持久化会话，再构造一条 `source.kind = 'plugin'` 的 user 消息并 `agent.followup()` 投递唤醒 driver。普通会话和 continuable 子代理会话都支持（只要配置了 session persistence 且该会话可恢复）。
+2. 到点时，host 插件唤醒的是**当初设定这条提醒的同一个会话**，不会换一个替身、也不会转投给分支之前/已归档的父会话：
+   - **会话仍在内存** → `agent.followup()`（live agent 本来就带着自己的工具集）；
+   - **普通会话已冷**（含 fork/分支出来的会话） → `ctx.agents.resume()`，并在 factory `setup` 里挂上该会话**自己持久化的预设**（`header.agentPreset` → `agentPresets.mount`），让恢复出来的 agent 拿回它创建时的工具注册表与提示词段落。不带这个 `setup` 去 resume 会**一个工具都不组合**——这正是历史上提醒醒来后 `unknown tool "bash"` 的原因；
+   - **session-backed 子代理子会话已冷** → `ctx.subagents.sendMessage()`，通过它**仍在线的直接父会话**投递，由 continuation seam 按它 `subagent/descriptor` 里记录的 `persona`/`toolFilter` 冷恢复**同一个子会话**，并保持父会话对它的所有权。把这种子会话当 root 恢复，会让之后 parent→child 投递撞上 *"already owned by an active write handle"*。
+   之后才构造一条 `source.kind = 'plugin'` 的 user 消息投递给该 agent 唤醒 driver。
+   `header.parentSession` 是持久化的 fork 血缘（或子会话的直接父会话）——那是安装历史，永远不是投递目标。
 3. 若提醒带有 `subject` 且对应后台子代理完成消息（`source.kind = 'subagent-settled'`）或 shell background job 完成消息（`source.plugin = 'tool-jobs'`）进入父会话 inbox，host 插件会自动取消该提醒。
 3. 本包（client 半面）每秒 `fetch` 一次 `/api/timer-reminders?sessionId=…`，从同一份文件读出本会话的提醒并渲染倒计时。
 
 ## 已知限制
 
-- 冷恢复要求已配置 session persistence 且目标会话可恢复；若恢复失败，会记 warning 并跳过，不会静默丢失。
+- 冷恢复要求已配置 session persistence 且目标会话可恢复。恢复时挂载的是该会话 `agentPreset` 指定的预设；若该预设已被删除或挂载失败，提醒会**停在待人工重试**（`list_reminders` 会显示原因），而不是换一个预设组合把会话恢复起来。
+- 瞬时恢复失败（启动时 agent-loop 尚未加载、会话仍被写句柄占用）按 2s/5s/15s 有界退避重试，**绝不**改用把提醒投给另一个会话的办法。
+- 已冷的**子代理子会话**只能经它仍在线的直接父会话恢复；父会话不在线时提醒停在待人工重试，插件不会擅自唤醒归档的父会话。
+- 冷恢复出的 AgentHandle 会保持到插件卸载；若其会话中途被关闭或替换，该 handle 会被丢弃并重新恢复。
 - 冷恢复出的 AgentHandle 会保持到插件卸载；因此被唤醒的会话在提醒后仍驻留内存。后续版本可考虑在唤醒 turn 结束后自动释放。
 - DSH 进程停机期间到期的提醒，会在重启后重新 arm 并立即触发，而不是被跳过。
 - 超过约 24.8 天的定时用分段续期实现，理论支持；但提醒是「进程内 timer + 磁盘快照」的混合，进程长时间不重启即可正常触发。
+
+## 测试
+
+`node test/delivery.mjs` 用假 host 跑投递契约回归：live 会话、fork 冷会话按原预设恢复、预设被删、factory 未加载的瞬时重试、子代理子会话父离线、子代理子会话父在线。断言提醒**永不**改投父会话/分支会话。
 
 ## License
 

@@ -9,10 +9,23 @@
  * regardless of which preset it runs on, and the route serves the browser.
  *
  * Reminders are persisted to `$DSH_HOME/timer-reminders.json` (keyed by the
- * owning session id) and re-armed on startup. At fire time the agent is
- * resolved through `ctx.agents.get(sessionId)` and woken via
- * `agent.followup()`; if the session is not live, it is cold-resumed through
- * `ctx.agents.resume()` so the reminder still fires after a restart.
+ * owning session id) and re-armed on startup.
+ *
+ * DELIVERY CONTRACT — a reminder always wakes the SAME session that armed it,
+ * never a relaunched stand-in:
+ *  1. live session → `agent.followup()` (a live agent already carries its tools);
+ *  2. cold ordinary session (forked/branched ones included) → `ctx.agents.resume()`
+ *     with the session's OWN persisted preset mounted in the factory `setup`, so
+ *     the resumed agent gets the composition it was created with. Resuming
+ *     without that `setup` composes no tools at all — the `unknown tool "bash"`
+ *     failure this plugin used to hit;
+ *  3. cold session-backed subagent child → `ctx.subagents.sendMessage()` through
+ *     its exact live direct parent, so the continuation seam cold-resumes the
+ *     same child with the persona/toolFilter recorded in its descriptor.
+ *
+ * `header.parentSession` is durable FORK LINEAGE (or a child's direct parent),
+ * never a fallback delivery target: re-routing a reminder to a pre-branch or
+ * archived parent session is exactly what this contract forbids.
  */
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -21,6 +34,15 @@ export const name = 'timer-scheduler-ui'
 export const inject = ['tools', 'timer', 'agents']
 
 const MAX_TIMEOUT = 2147483647
+/**
+ * Bounded backoff for TRANSIENT cold-resume failures: the agent factory is
+ * registered by the agent-loop plugin, so a reminder that is overdue at startup
+ * can fire before that plugin has loaded, and a session can still be owned by an
+ * in-flight write handle during a restart. Neither is a reason to reroute the
+ * reminder to another session.
+ */
+const RESUME_RETRY_DELAYS = [2000, 5000, 15000]
+const TRANSIENT_RESUME = /no agent factory registered|already owned by an active write handle|agent factory|not (yet )?(loaded|ready)/i
 
 function isNetworkError(err) {
   const code = String((err && (err.code || (err.cause && err.cause.code))) || '')
@@ -178,43 +200,116 @@ export function apply(ctx) {
         return false
       }
     }
-    const deliverToParent = () => {
-      if (parentSession === undefined || parentSession === sessionId) return false
-      const liveParent = ctx.agents.get(parentSession)
-      if (liveParent !== undefined) {
-        console.log(`timer-scheduler: session ${sessionId} not live; delivering reminder to live parent ${parentSession}`)
-        return deliver(liveParent)
-      }
-      console.warn(`timer-scheduler: parent ${parentSession} is not live; NOT cold-resuming an archived parent for reminder from ${sessionId}`)
-      logDeliveryError('parent-not-live', sessionId, parentSession, new Error('parent session not live; archived parent not resumed'))
-      return false
-    }
     const live = ctx.agents.get(sessionId)
     if (live !== undefined) {
+      // A live agent already runs the composition it started with, so a plain
+      // followup preserves its tools. (Live includes a live subagent child.)
       deliver(live)
       return
     }
+    // Nothing has been injected at this point, so parking is never "delivery uncertain".
+    const park = (reason) => {
+      entry.delivering = false
+      entry.deliveryUncertain = false
+      entry.missed = true
+      entry.needsManualRetry = true
+      entry.lastError = reason
+      persist()
+      console.warn(`timer-scheduler: reminder ${entry.id} parked for manual retry: ${reason}`)
+    }
+    /** Live-preferred durable header: it names the session's preset and its lineage. */
+    const readHeader = async () => {
+      const attached = ctx.get('sessions')?.get?.(sessionId)
+      if (attached?.header !== undefined) return attached.header
+      const query = ctx.get('sessionQuery')
+      if (typeof query?.observeSession !== 'function') return undefined
+      const observation = await query.observeSession(sessionId, { projectionMode: 'none' })
+      return observation?.header
+    }
     void (async () => {
-      try {
-        const selection = ctx.get('agentDefaultModel')?.currentSelection?.()
-        const resumeAgentOptions = selection?.provider && selection?.model ? { provider: selection.provider, model: selection.model } : undefined
-        let handle = resumed.get(sessionId)
-        if (handle === undefined) {
-          handle = await ctx.agents.resume({
-            resumeSessionId: sessionId,
-            ...(resumeAgentOptions ? { agentOptions: resumeAgentOptions } : {}),
-          })
-          resumed.set(sessionId, handle)
-          console.log(`timer-scheduler: cold-resumed session ${sessionId} for reminder`)
+      const header = await readHeader()
+      if (header?.origin === 'subagent') {
+        // Session-backed subagent children are owned by the subagent continuation
+        // seam: it alone cold-resumes the SAME child with the persona/toolFilter
+        // recorded in its descriptor, and keeps the parent's ownership of it.
+        // Resuming one as a root breaks later parent→child delivery with
+        // "already owned by an active write handle".
+        const subagents = ctx.get('subagents')
+        const parentId = header.parentSession
+        const liveParent = typeof parentId === 'string' && parentId.length > 0 ? ctx.agents.get(parentId) : undefined
+        if (typeof subagents?.sendMessage === 'function' && liveParent !== undefined) {
+          await subagents.sendMessage(liveParent, sessionId, [{ type: 'text', text }], { signal: new AbortController().signal })
+          succeed()
+          return
         }
-        deliver(handle.agent)
-      } catch (err) {
-        console.warn(`timer-scheduler: cold resume failed for ${sessionId}; trying parent fallback: ${String((err && err.message) || err)}`)
-        logDeliveryError('cold-resume-failed', sessionId, parentSession, err)
-        if (!deliverToParent()) fail(err, 'cold-resume')
+        park(`子代理会话 ${sessionId} 未活动，且其直接父会话 ${parentId ?? '(未知)'} 不在线；按约定不会把提醒转投给父会话或分支会话`)
+        logDeliveryError('subagent-parent-offline', sessionId, parentId ?? parentSession, new Error('continuable child not live and its direct parent is not live'))
+        return
       }
+      // Ordinary session, forked/branched ones included. Mount the preset it was
+      // composed from: resuming without a preset composes NO tools at all, which
+      // is how an earlier version produced `unknown tool "bash"` after a wake.
+      // Fork lineage (header.parentSession) is history, never a delivery target.
+      const presets = ctx.get('agentPresets')
+      let setup
+      let presetId
+      if (typeof presets?.mount === 'function') {
+        const resolved = await presets.resolve(header?.agentPreset)
+        presetId = resolved.id
+        setup = async (agentCtx) => { await presets.mount(agentCtx, resolved.id) }
+      }
+      const selection = ctx.get('agentDefaultModel')?.currentSelection?.()
+      const resumeAgentOptions = selection?.provider && selection?.model ? { provider: selection.provider, model: selection.model } : undefined
+      let handle = resumed.get(sessionId)
+      if (handle !== undefined && ctx.agents.get(sessionId) !== handle.agent) {
+        // Kept from an earlier wake but closed or replaced since: drop the stale
+        // handle instead of injecting into a dead agent.
+        resumed.delete(sessionId)
+        void handle.dispose().catch(() => {})
+        handle = undefined
+      }
+      if (handle === undefined) {
+        handle = await ctx.agents.resume({
+          resumeSessionId: sessionId,
+          ...(resumeAgentOptions ? { agentOptions: resumeAgentOptions } : {}),
+          ...(setup !== undefined ? { setup } : {}),
+        })
+        resumed.set(sessionId, handle)
+        entry.resumeRetries = 0
+        console.log(`timer-scheduler: cold-resumed session ${sessionId} for reminder${presetId !== undefined ? ` (preset ${presetId})` : ''}`)
+      }
+      deliver(handle.agent)
     })().catch((err) => {
-      fail(err, 'async')
+      const detail = String((err && err.message) || err)
+      const resumeRetries = Number(entry.resumeRetries || 0)
+      if (TRANSIENT_RESUME.test(detail) && resumeRetries < RESUME_RETRY_DELAYS.length) {
+        entry.resumeRetries = resumeRetries + 1
+        entry.delivering = false
+        entry.deliveryUncertain = false
+        entry.missed = true
+        entry.needsManualRetry = false
+        entry.lastError = detail
+        persist()
+        const delay = RESUME_RETRY_DELAYS[resumeRetries]
+        console.warn(`timer-scheduler: transient cold-resume failure for ${sessionId} (${detail}); retrying in ${Math.round(delay / 1000)}s (${entry.resumeRetries}/${RESUME_RETRY_DELAYS.length})`)
+        if (entry.retryTimer) { entry.retryTimer(); entry.retryTimer = null }
+        entry.retryTimer = ctx.timeout(() => {
+          entry.retryTimer = null
+          fire(entry)
+        }, delay)
+        return
+      }
+      const errCode = String((err && (err.code || (err.cause && err.cause.code))) || '')
+      if (/agent-preset\//.test(errCode) || /agent-presets: preset .* not found|failed to mount/.test(detail)) {
+        // The session's own preset is gone or unusable: no auto-retry can fix
+        // that, and resuming under a different preset would hand the session a
+        // composition it never had. Park it and tell the user which preset.
+        park(`会话 ${sessionId} 的原预设不可用：${detail}`)
+        logDeliveryError('agent-preset-unavailable', sessionId, entry.parentSession, err)
+        return
+      }
+      logDeliveryError('cold-resume-failed', sessionId, entry.parentSession, err)
+      fail(err, 'cold-resume')
     })
   }
 
@@ -254,7 +349,7 @@ export function apply(ctx) {
   }
 
   function schedule(note, dueMs, sessionId, subject, parentSession) {
-    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null, deliveryUncertain: false, networkBlocked: false, needsManualRetry: false, immediateRetries: 0, lastError: null }
+    const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null, deliveryUncertain: false, networkBlocked: false, needsManualRetry: false, immediateRetries: 0, resumeRetries: 0, lastError: null }
     pending.set(entry.id, entry)
     persist()
     arm(entry)
@@ -337,7 +432,7 @@ export function apply(ctx) {
   // armed too: they fire immediately after restart instead of being dropped.
   for (const r of loadReminders()) {
     const wasDelivering = Boolean(r.delivering)
-    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null, retryTimer: null, delivering: false, missed: Boolean(r.missed) || wasDelivering, attempts: Number(r.attempts || 0), lastAttemptAt: r.lastAttemptAt || null, deliveryUncertain: wasDelivering || Boolean(r.deliveryUncertain), networkBlocked: Boolean(r.networkBlocked), needsManualRetry: Boolean(r.needsManualRetry), immediateRetries: Number(r.immediateRetries || 0), lastError: r.lastError || null }
+    const entry = { id: r.id, note: r.note, dueMs: r.dueMs, sessionId: r.sessionId, subject: typeof r.subject === 'string' ? r.subject : undefined, parentSession: typeof r.parentSession === 'string' ? r.parentSession : undefined, cancel: null, retryTimer: null, delivering: false, missed: Boolean(r.missed) || wasDelivering, attempts: Number(r.attempts || 0), lastAttemptAt: r.lastAttemptAt || null, deliveryUncertain: wasDelivering || Boolean(r.deliveryUncertain), networkBlocked: Boolean(r.networkBlocked), needsManualRetry: Boolean(r.needsManualRetry), immediateRetries: Number(r.immediateRetries || 0), resumeRetries: Number(r.resumeRetries || 0), lastError: r.lastError || null }
     pending.set(entry.id, entry)
     if (entry.deliveryUncertain || entry.networkBlocked || entry.needsManualRetry) {
       console.warn(`timer-scheduler: reminder ${entry.id} requires manual retry (${entry.deliveryUncertain ? 'delivery-uncertain' : entry.networkBlocked ? 'network-blocked' : 'previous-failure'}); not auto-injecting.`)
@@ -423,7 +518,10 @@ export function apply(ctx) {
       for (const e of pending.values()) {
         const remain = Math.max(0, Math.round((e.dueMs - nowMs) / 1000))
         const state = e.deliveryUncertain ? '投递状态不确定，未重复注入（可用 retry_reminder 手动重试）' : e.networkBlocked ? '网络原因未发送，等待人工重试' : e.needsManualRetry ? '未发送，等待人工重试' : e.missed ? '未及时触发，等待重试' : (Date.now() >= e.dueMs ? '已到点，等待触发' : `约 ${remain}s`)
-        items.push(`- ${e.id}${e.subject ? ` [${e.subject}]` : ''} ${state} 到点 ${iso(e.dueMs)}${e.attempts ? ` attempts=${e.attempts}` : ''}\n  ${e.note}`)
+        // A parked reminder names WHY it is parked: a missing preset, an offline
+        // subagent parent, or an exhausted retry all need different user action.
+        const why = e.needsManualRetry && typeof e.lastError === 'string' && e.lastError.length > 0 ? `\n  原因: ${e.lastError}` : ''
+        items.push(`- ${e.id}${e.subject ? ` [${e.subject}]` : ''} ${state} 到点 ${iso(e.dueMs)}${e.attempts ? ` attempts=${e.attempts}` : ''}\n  ${e.note}${why}`)
       }
       return items.length === 0 ? '暂无待触发的定时提醒' : `待触发的定时提醒（${items.length} 条）:\n${items.join('\n')}`
     },

@@ -10,7 +10,7 @@ store check can identify a single plugin candidate.
 |---|---|---|---|
 | Mission Control | `packages/dsh-mission-control` | `dsh-mission-control` | 0.2.0 |
 | LLM-as-a-Verifier | `packages/dsh-plugin-llm-verifier` | `llm-verifier` | 0.9.0 |
-| Timer Scheduler UI | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.0 |
+| Timer Scheduler UI | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.1 |
 
 Explicit submission URLs:
 

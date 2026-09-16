@@ -118,6 +118,28 @@ mission_capabilities
   - 用官方 `subagents.sendMessage()` / `followup()` 承载 worker 续跑消息。
   - 配置开关：`officialIntegration: 'off' | 'readonly' | 'messages' | 'full'`，默认 `off`。
 
+#### 官方冷恢复语义（读 0.1.5 类型定义得出的结论）
+
+这些是直接读安装包 `*.d.ts` 得到的硬约束，写适配层前必须遵守：
+
+- `ResumeAgentOptions` 只有 `{ resumeSessionId, parentAgent?, agentOptions?, signal?, setup? }`：
+  - **不能改 `meta`**（`cwd` / `parentSession` / `origin` / `delegationDepth` / `agentPreset` 都是持久化的会话数据）；
+  - `parentAgent` 省略即按 **root** 恢复。`header.parentSession` 是**持久化的 fork 血缘**，不是运行期父子关系；
+  - `setup(agentCtx, agent)` 是唯一能在发布前组合 agent 世界的钩子（`dsh-agent-presets` 的 `mount(agentCtx, id)` 就走这里）。
+- 官方普通会话冷恢复 = `ApiSessionController.resumeObserved()`：
+  `header.agentPreset` → `agentPresets.resolve()` → `agents.resume({ resumeSessionId, agentOptions, setup: mount })`。
+  **不带 `setup` 的 `agents.resume()` 不挂任何预设，等于一个工具都没有**（这正是提醒醒来后 `unknown tool "bash"` 的根因）。路由/预设名要取持久化的 `header.agentPreset`，不能取当前默认预设。
+- 持久化的 **session-backed 子代理** 不走普通会话恢复：官方用 `subagent/descriptor`（`SUBAGENT_DESCRIPTOR_VERSION = 3`）持久化 `provider` / `agentProvider|Model|ReasoningEffort` / `persona` / `toolFilter`，
+  冷恢复时经 `applyChildComposition()` **重新 join 父预设并重新施加 persona+toolFilter**。
+  恢复入口是 `ctx.subagents`（`sendMessage()` 缺省即 `coldResume()`；host 侧另有 symbol-keyed `deliverSubagentPrompt` 走 `queueHostSubagentPrompt/steerHostSubagentPrompt`），
+  且都要求 **exact live direct parent** 作为 `sender`/`parent` 做授权。
+  - 把子代理会话当 root 恢复会破坏父会话的所有权，之后 parent→child 投递会撞 `already owned by an active write handle`；反向地，`ctx.subagents` 对 `origin === 'subagent'` 的会话是唯一正确通道。
+- 推论（已落到 `dsh-timer-scheduler-ui` 0.2.1）：
+  - 提醒**只唤醒同一个会话**，绝不回退到血缘父会话/分支之前的会话（我方约定，非官方限制）；
+  - 瞬时失败（agent-loop 尚未加载、会话仍被写句柄占用）按 2s/5s/15s 有界退避重试；
+  - 预设被删/不可挂载 → 停在待人工重试并显示原因，而不是换预设恢复；
+  - 子代理子会话的直接父会话离线 → 停在待人工重试，不擅自唤醒归档父会话。
+
 ### Phase 3：可选官方后端（高风险，后置）
 - 评估把官方 Agent Teams 作为 mission worker 的 transport backend，但保留：
   - mission 成功标准
@@ -153,6 +175,8 @@ mission_capabilities
 - [x] `mission_goal_view` 在模拟 `ctx.goals` 下返回 goal，未挂载时安全空转。
 - [x] `mission_worker_plan` 在模拟 `ctx.subagents` 下返回 provider readiness、durable label 和包含 guidance/artifact/protocol 的完整 prompt，不产生副作用。
 - [x] `mission_goal_sync` 在模拟 `ctx.goals` 下验证 dry-run 计划、显式 create、已存在 goal 不修改三条路径。
+- [x] 冷恢复组合：普通会话按 `header.agentPreset` 挂载原预设（`dsh-timer-scheduler-ui` `test/delivery.mjs` 六类用例全绿）。
+- [x] 冷恢复不回退父会话：预设缺失/子代理父离线都停在待人工重试，测试断言 resume/sendMessage 未被误用。
 - [ ] 官方 mailbox 消息不丢、不重复。
 - [ ] mission review / blind / final audit 全程不变。
 - [ ] 旧 DSH 版本下 `mission_capabilities` 返回全 false 或 null，不报错。

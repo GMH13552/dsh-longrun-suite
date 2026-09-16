@@ -58,7 +58,7 @@ must be submitted with an explicit package path:
 |---|---|---|---|
 | dsh-mission-control | `packages/dsh-mission-control` | `dsh-mission-control` | 0.2.0 |
 | llm-as-a-verifier | `packages/dsh-plugin-llm-verifier` | `llm-verifier` | 0.9.0 |
-| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.0 |
+| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.1 |
 
 Every subpackage declares the exact DSH compatibility matrix in `package.json`.
 See [`STORE_SUBMISSION.md`](STORE_SUBMISSION.md).
@@ -122,7 +122,7 @@ Host / plugin layer
 │   ├── lib/index.js         # mission_* / wiki_* / artifact tools
 │   ├── bin/mission_check.mjs
 │   └── preset/              # Captain presets and protocol skills
-├── dsh-timer-scheduler-ui    # reminders + auto-cancel + parent fallback
+├── dsh-timer-scheduler-ui    # reminders + auto-cancel + same-session cold resume
 └── dsh-plugin-llm-verifier   # LLM-as-a-Verifier
 
 Agent / preset layer

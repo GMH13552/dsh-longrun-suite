@@ -87,15 +87,27 @@ The header reminder menu shows the countdown while reminders are pending and hid
 ## How it works
 
 1. The agent calls `schedule_reminder`; the host plugin arms a one-shot Cordis `timer` and writes `{id, note, dueMs, sessionId, subject?}` to `~/.dsh/timer-reminders.json`.
-2. On fire, the host plugin resolves the agent via `agents.get(sessionId)`. If it is not live, the plugin cold-resumes the persisted session through `ctx.agents.resume()`, then builds a `source.kind = 'plugin'` user message and delivers it through `agent.followup()` to wake the driver. This works for both regular sessions and continuable subagent sessions (as long as session persistence is configured and the session can be resumed).
+2. On fire, the host plugin wakes **the same session that armed the reminder** — never a relaunched stand-in and never a pre-branch/archived parent:
+   - **live session** → `agent.followup()` (a live agent already carries its own tools);
+   - **cold ordinary session** (forked/branched ones included) → `ctx.agents.resume()` with the session's **own persisted preset** mounted in the factory `setup` (`header.agentPreset` → `agentPresets.mount`), so the resumed agent gets the tool registry and prompt sections it was created with. Resuming without that `setup` composes **no tools at all** — the historical `unknown tool "bash"` failure after a wake;
+   - **cold session-backed subagent child** → `ctx.subagents.sendMessage()` through its exact live direct parent, so the continuation seam cold-resumes the same child with the `persona`/`toolFilter` recorded in its durable `subagent/descriptor` and keeps the parent's ownership of it. Resuming such a child as a root instead breaks later parent→child delivery with *"already owned by an active write handle"*.
+   A message is then built with `source.kind = 'plugin'` and delivered to that agent to wake its driver.
+   `header.parentSession` is durable fork lineage (or a child's direct parent) — installation history, never a delivery target.
 3. If a reminder carries a `subject` and a matching background subagent completion notice (`source.kind = 'subagent-settled'`) or shell background job completion notice (`source.plugin = 'tool-jobs'`) enters the parent session's inbox, the host plugin cancels the reminder automatically.
 4. This package's client half fetches `/api/timer-reminders?sessionId=…` every second and renders the countdown from that same file.
 
 ## Known limitations
 
-- Cold resume requires session persistence to be configured and the owning session to be resumable. If resume fails, the reminder is logged and skipped rather than silently dropped. The cold-resumed AgentHandle is kept until the plugin is unloaded, so the woken session stays resident after the reminder; a future version may dispose it after the wake turn settles.
+- Cold resume requires session persistence to be configured and the owning session to be resumable. Resuming a session mounts the preset named by its durable `agentPreset`; if that preset was deleted or will not mount, the reminder is **parked for manual retry** (`list_reminders` shows the reason) instead of being resumed under a different composition.
+- Transient resume failures (agent-loop not loaded yet at startup, session still owned by an in-flight write handle) are retried with bounded backoff (2s/5s/15s) — never by re-routing the reminder to another session.
+- A cold **subagent child** can only be resumed through its live direct parent. If that parent is offline the reminder is parked for manual retry; the plugin will not wake an archived parent session on your behalf.
+- The cold-resumed AgentHandle is kept until the plugin is unloaded, so the woken session stays resident after the reminder; a future version may dispose it after the wake turn settles. A handle whose session was closed or replaced in the meantime is dropped and resumed again.
 - Reminders that become due while the DSH process is down are re-armed on startup and fire immediately (instead of being skipped).
 - Delays beyond ~24.8 days are chunked, so they work, but the mechanism is "in-process timer + disk snapshot"; the timer only needs the process to stay up to fire.
+
+## Tests
+
+`node test/delivery.mjs` runs the delivery-contract regression suite against a fake host: live session, cold forked session with preset restoration, deleted preset, transient factory-missing retry, cold subagent child with an offline parent, and cold subagent child with a live parent. It asserts that a reminder never reroutes to a parent/branch session.
 
 ## License
 

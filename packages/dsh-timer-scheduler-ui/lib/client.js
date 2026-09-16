@@ -131,6 +131,10 @@ window.__ModuleLoader__.load({
                 : overdue
                   ? '\u23F0 \u672a\u53ca\u65f6\u89E6\u53d1\uff0c\u7b49\u5f85\u8865\u89e6\u53d1'
                   : '\u5269\u4f59 ' + fmt(remainMs)
+          if (r.needsManualRetry && typeof r.lastError === 'string' && r.lastError.length > 0) {
+            var why = r.lastError.length > 60 ? r.lastError.slice(0, 59) + '\u2026' : r.lastError
+            statusText += ' \u00b7 ' + why
+          }
           if (overdue && !r.deliveryUncertain && !r.networkBlocked && !r.needsManualRetry && r.attempts) statusText += ' \u00b7 \u5C1D\u8BD5 ' + r.attempts
           return React.createElement('li', { key: r.id, className: 'dsh-sched-row' },
             React.createElement('div', { className: 'dsh-sched-grow' },
