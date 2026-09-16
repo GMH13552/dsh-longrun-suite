@@ -94,13 +94,16 @@ DeepSeek Harness（DSH）插件：给 agent 一个**自主定时器**——让�
    之后才构造一条 `source.kind = 'plugin'` 的 user 消息投递给该 agent 唤醒 driver。
    `header.parentSession` 是持久化的 fork 血缘（或子会话的直接父会话）——那是安装历史，永远不是投递目标。
 3. 若提醒带有 `subject` 且对应后台子代理完成消息（`source.kind = 'subagent-settled'`）或 shell background job 完成消息（`source.plugin = 'tool-jobs'`）进入父会话 inbox，host 插件会自动取消该提醒。
-3. 本包（client 半面）每秒 `fetch` 一次 `/api/timer-reminders?sessionId=…`，从同一份文件读出本会话的提醒并渲染倒计时。
+4. 本包（client 半面）每秒 `fetch` 一次 `/api/timer-reminders?sessionId=…`，从同一份数据读出本会话的提醒并在会话头部渲染倒计时/状态。
+5. 头部菜单同时是**人工控制面**：每行有 **补触发**（立刻触发，仍投给同一个会话）与 **取消** 按钮，走 `POST /api/timer-reminders?action=retry|cancel&id=…&sessionId=…`（跨会话请求返回 403）。没有它时，停在队列里的提醒「看得见但推不出去」——只有 agent 能调 `retry_reminder`。
+6. 同一会话在同一分钟内重复排同一条 note 会**复用**已有提醒，而不是再堆一条（返回 `已设定时提醒` / `复用已存在的定时提醒` 两种措辞），避免「被问两次就留下两条都会触发的提醒」。
 
 ## 已知限制
 
 - 冷恢复要求已配置 session persistence 且目标会话可恢复。恢复时挂载的是该会话 `agentPreset` 指定的预设；若该预设已被删除或挂载失败，提醒会**停在待人工重试**（`list_reminders` 会显示原因），而不是换一个预设组合把会话恢复起来。
 - 瞬时恢复失败（启动时 agent-loop 尚未加载、会话仍被写句柄占用）按 2s/5s/15s 有界退避重试，**绝不**改用把提醒投给另一个会话的办法。
 - 已冷的**子代理子会话**只能经它仍在线的直接父会话恢复；父会话不在线时提醒停在待人工重试，插件不会擅自唤醒归档的父会话。
+- 冷恢复有 90s 上限：一直不返回的 `resume` 会按退避重试，而不是把条目永久卡在 `delivering`（那种状态下它既不参与重新 arm，也无法被人工推出）。
 - 冷恢复出的 AgentHandle 会保持到插件卸载；若其会话中途被关闭或替换，该 handle 会被丢弃并重新恢复。
 - 冷恢复出的 AgentHandle 会保持到插件卸载；因此被唤醒的会话在提醒后仍驻留内存。后续版本可考虑在唤醒 turn 结束后自动释放。
 - DSH 进程停机期间到期的提醒，会在重启后重新 arm 并立即触发，而不是被跳过。

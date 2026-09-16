@@ -42,7 +42,24 @@ const MAX_TIMEOUT = 2147483647
  * reminder to another session.
  */
 const RESUME_RETRY_DELAYS = [2000, 5000, 15000]
-const TRANSIENT_RESUME = /no agent factory registered|already owned by an active write handle|agent factory|not (yet )?(loaded|ready)/i
+const TRANSIENT_RESUME = /no agent factory registered|already owned by an active write handle|agent factory|not (yet )?(loaded|ready)|timed out/i
+/**
+ * A cold resume must not wedge a reminder forever: an awaited resume that never
+ * settles would leave the entry `delivering` (invisible in the queue, immune to
+ * re-arming) with nothing left to push it out. Bounded here, then retried.
+ */
+const RESUME_TIMEOUT_MS = 90_000
+
+/** Reject a promise that never settles, so a hung step cannot own an entry forever. */
+function withTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms)
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value) },
+      (error) => { clearTimeout(timer); reject(error) },
+    )
+  })
+}
 
 function isNetworkError(err) {
   const code = String((err && (err.code || (err.cause && err.cause.code))) || '')
@@ -269,11 +286,11 @@ export function apply(ctx) {
         handle = undefined
       }
       if (handle === undefined) {
-        handle = await ctx.agents.resume({
+        handle = await withTimeout(ctx.agents.resume({
           resumeSessionId: sessionId,
           ...(resumeAgentOptions ? { agentOptions: resumeAgentOptions } : {}),
           ...(setup !== undefined ? { setup } : {}),
-        })
+        }), RESUME_TIMEOUT_MS, `cold resume of ${sessionId}`)
         resumed.set(sessionId, handle)
         entry.resumeRetries = 0
         console.log(`timer-scheduler: cold-resumed session ${sessionId} for reminder${presetId !== undefined ? ` (preset ${presetId})` : ''}`)
@@ -349,11 +366,18 @@ export function apply(ctx) {
   }
 
   function schedule(note, dueMs, sessionId, subject, parentSession) {
+    // The same note at the same minute from the same session is the same intent:
+    // reuse the pending entry instead of queuing a second wake for it. (An agent
+    // asked twice used to leave two identical reminders that both fired.)
+    for (const existing of pending.values()) {
+      if (existing.sessionId !== sessionId || existing.note !== note) continue
+      if (Math.abs(existing.dueMs - dueMs) <= 60_000) return { entry: existing, reused: true }
+    }
     const entry = { id: makeId(), note, dueMs, sessionId, subject: subject || undefined, parentSession: parentSession || undefined, cancel: null, retryTimer: null, delivering: false, missed: false, attempts: 0, lastAttemptAt: null, deliveryUncertain: false, networkBlocked: false, needsManualRetry: false, immediateRetries: 0, resumeRetries: 0, lastError: null }
     pending.set(entry.id, entry)
     persist()
     arm(entry)
-    return entry
+    return { entry, reused: false }
   }
 
   function cancelEntry(id) {
@@ -499,8 +523,9 @@ export function apply(ctx) {
       if (dueMs <= Date.now() + 500) throw new Error('Scheduled time is in the past (or too soon). Provide a future delay_seconds or at.')
       const header = agent.session?.header
       const parentSession = header?.parentSession
-      const entry = schedule(String(args.note), dueMs, agent.id, typeof args.subject === 'string' ? args.subject : undefined, parentSession)
-      return `已设定时提醒 ${entry.id}\n到点: ${iso(entry.dueMs)}\n约 ${Math.round((entry.dueMs - Date.now()) / 1000)}s 后触发${entry.subject ? `\n关联: ${entry.subject}` : ''}`
+      const { entry, reused } = schedule(String(args.note), dueMs, agent.id, typeof args.subject === 'string' ? args.subject : undefined, parentSession)
+      const head = reused ? `复用已存在的定时提醒 ${entry.id}（同会话同内容同时间，未重复排队）` : `已设定时提醒 ${entry.id}`
+      return `${head}\n到点: ${iso(entry.dueMs)}\n约 ${Math.round((entry.dueMs - Date.now()) / 1000)}s 后触发${entry.subject ? `\n关联: ${entry.subject}` : ''}`
     },
   })
 
@@ -576,6 +601,39 @@ export function apply(ctx) {
   // ── browser data route ────────────────────────────────────────────────────
 
   ctx.inject(['webServer'], (httpCtx) => {
+    /** Own the whole response for one JSON payload; the route never streams. */
+    function sendJson(res, status, payload) {
+      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
+      res.end(JSON.stringify(payload))
+    }
+    /**
+     * Push one queued reminder out by hand. `retry` clears every parked/failed
+     * flag and fires now; `cancel` drops it. This is the same state change the
+     * model tools make, exposed so the header menu can act without an agent —
+     * otherwise a parked entry is visible but unpushable from the browser.
+     */
+    function actOnReminder(action, id, sessionId, res) {
+      const entry = pending.get(id)
+      if (entry === undefined) { sendJson(res, 404, { ok: false, error: 'not-found', id }); return }
+      if (sessionId !== '' && entry.sessionId !== sessionId) { sendJson(res, 403, { ok: false, error: 'session-mismatch', id }); return }
+      if (action === 'cancel') {
+        cancelEntry(id)
+        sendJson(res, 200, { ok: true, action: 'cancel', id })
+        return
+      }
+      // 'retry' also covers 'fire now': the user is explicitly pushing this entry.
+      entry.deliveryUncertain = false
+      entry.networkBlocked = false
+      entry.needsManualRetry = false
+      entry.delivering = false
+      entry.immediateRetries = 0
+      entry.resumeRetries = 0
+      entry.missed = true
+      if (typeof entry.cancel === 'function') { entry.cancel(); entry.cancel = null }
+      if (typeof entry.retryTimer === 'function') { entry.retryTimer(); entry.retryTimer = null }
+      fire(entry)
+      sendJson(res, 200, { ok: true, action: 'retry', id })
+    }
     const dispose = httpCtx.webServer.register({
       kind: 'exact',
       path: '/api/timer-reminders',
@@ -583,19 +641,18 @@ export function apply(ctx) {
         try {
           const url = new URL(req.url ?? '/', 'http://localhost')
           const sessionId = url.searchParams.get('sessionId') ?? ''
+          if ((req.method ?? 'GET').toUpperCase() === 'POST') {
+            actOnReminder(url.searchParams.get('action') ?? '', url.searchParams.get('id') ?? '', sessionId, res)
+            return
+          }
           const reminders = sessionId === ''
             ? []
             : [...pending.values()]
               .filter((e) => e.sessionId === sessionId)
-              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs, missed: Boolean(e.missed), attempts: Number(e.attempts || 0), lastAttemptAt: e.lastAttemptAt || null, deliveryUncertain: Boolean(e.deliveryUncertain), networkBlocked: Boolean(e.networkBlocked), needsManualRetry: Boolean(e.needsManualRetry), lastError: e.lastError || null }))
-          res.writeHead(200, {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Cache-Control': 'no-store',
-          })
-          res.end(JSON.stringify({ reminders }))
+              .map((e) => ({ id: e.id, note: e.note, dueMs: e.dueMs, missed: Boolean(e.missed), attempts: Number(e.attempts || 0), lastAttemptAt: e.lastAttemptAt || null, delivering: Boolean(e.delivering), deliveryUncertain: Boolean(e.deliveryUncertain), networkBlocked: Boolean(e.networkBlocked), needsManualRetry: Boolean(e.needsManualRetry), lastError: e.lastError || null }))
+          sendJson(res, 200, { reminders })
         } catch (err) {
-          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' })
-          res.end(JSON.stringify({ error: String((err && err.message) || err) }))
+          sendJson(res, 500, { error: String((err && err.message) || err) })
         }
       },
     })

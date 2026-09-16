@@ -58,10 +58,12 @@ async function runCase(name, world) {
   const live = wrapLive(world.live)
   const liveParent = wrapLive(world.liveParent)
 
+  // Overdue by default: the plugin re-arms it at startup and fires immediately.
+  // A future dueMs seeds a genuinely PENDING entry (for queue-action tests).
   writeFileSync(join(home, 'timer-reminders.json'), JSON.stringify([{
     id: 'r1',
     note: 'check gpu',
-    dueMs: Date.now() - 60_000,
+    dueMs: Date.now() + Number(world.dueInMs ?? -60_000),
     sessionId: world.header.id,
     parentSession: world.header.parentSession,
     attempts: 0,
@@ -117,7 +119,13 @@ async function runCase(name, world) {
       },
     },
     tools: { register: (definition) => { (ctx.__definitions ??= []).push(definition) } },
-    inject: () => {},
+    inject: (names, callback) => {
+      if (!Array.isArray(names) || !names.includes('webServer')) return
+      callback({
+        webServer: { register: (route) => { calls.route = route; return () => {} } },
+        effect: () => {},
+      })
+    },
     effect: (callback) => callback(),
     on: () => {},
     timeout: (callback, ms) => {
@@ -132,6 +140,23 @@ async function runCase(name, world) {
   const list = (ctx.__definitions ?? []).find((definition) => definition.name === 'list_reminders')
   const listOutput = list === undefined ? '' : await list.execute({})
   calls.listOutput = listOutput
+  calls.tools = {
+    schedule: (ctx.__definitions ?? []).find((definition) => definition.name === 'schedule_reminder'),
+    list,
+    retry: (ctx.__definitions ?? []).find((definition) => definition.name === 'retry_reminder'),
+    cancel: (ctx.__definitions ?? []).find((definition) => definition.name === 'cancel_reminder'),
+  }
+  /** Drive the browser-facing route exactly as the header menu does. */
+  calls.post = async (query) => {
+    let status = 0
+    let body = ''
+    await calls.route.handler(
+      { method: 'POST', url: '/api/timer-reminders?' + query },
+      { writeHead: (code) => { status = code }, end: (payload) => { body = payload } },
+    )
+    await sleep(60)
+    return { status, body: JSON.parse(body) }
+  }
   return calls
 }
 
@@ -211,6 +236,52 @@ async function runCase(name, world) {
   check('targeted the same child id', calls.sendMessage[0]?.childId === 'child-2', JSON.stringify(calls.sendMessage))
   check('did NOT root-resume the child', calls.resume.length === 0, JSON.stringify(calls.resume))
   check('delivered a real reminder text', String(calls.sendMessage[0]?.text || '').includes('定时提醒'), JSON.stringify(calls.sendMessage))
+}
+
+// ── 7. a repeated schedule for the same note/minute is reused, not stacked ──
+{
+  console.log('case: duplicate schedule is reused')
+  const calls = await runCase('duplicate-schedule', {
+    header: { id: 's-dup', agentPreset: 'long-run-router' },
+    live: { id: 's-dup' },
+  })
+  const agent = { id: 's-dup', session: { header: { parentSession: undefined } } }
+  const first = await calls.tools.schedule.execute({ note: 'same check', delay_seconds: 3600 }, { agent })
+  const second = await calls.tools.schedule.execute({ note: 'same check', delay_seconds: 3600 }, { agent })
+  check('first schedule created an entry', first.includes('已设定时提醒'), first)
+  check('second schedule reused it', second.includes('复用已存在的定时提醒'), second)
+  const rows = await calls.tools.list.execute({})
+  check('only one reminder is pending', rows.includes('1 条'), rows)
+}
+
+// ── 8. the header menu can push a queued reminder out (and cancel it) ───────
+{
+  console.log('case: menu retry / cancel actions')
+  // A future entry: pending, untouched by the startup re-arm.
+  const pending = await runCase('menu-retry', {
+    header: { id: 's-menu', agentPreset: 'long-run-router' },
+    live: { id: 's-menu' },
+    dueInMs: 3600_000,
+  })
+  check('a queue-action route is registered', typeof pending.route?.handler === 'function')
+  const wrongSession = await pending.post('action=cancel&id=r1&sessionId=someone-else')
+  check('another session cannot act on it', wrongSession.status === 403, JSON.stringify(wrongSession))
+  const unknown = await pending.post('action=retry&id=nope&sessionId=s-menu')
+  check('an unknown id answers 404', unknown.status === 404, JSON.stringify(unknown))
+  const pushed = await pending.post('action=retry&id=r1&sessionId=s-menu')
+  check('retry is accepted', pushed.status === 200 && pushed.body.ok === true, JSON.stringify(pushed))
+  check('retry delivered to the SAME session right away', pending.delivered.length === 1, JSON.stringify(pending.delivered))
+  check('the delivered entry left the queue', (await pending.tools.list.execute({})).includes('暂无待触发'), await pending.tools.list.execute({}))
+
+  const toCancel = await runCase('menu-cancel', {
+    header: { id: 's-cancel', agentPreset: 'long-run-router' },
+    live: { id: 's-cancel' },
+    dueInMs: 3600_000,
+  })
+  const cancelled = await toCancel.post('action=cancel&id=r1&sessionId=s-cancel')
+  check('cancel is accepted', cancelled.status === 200 && cancelled.body.action === 'cancel', JSON.stringify(cancelled))
+  check('cancelled entry is gone from the queue', (await toCancel.tools.list.execute({})).includes('暂无待触发'), await toCancel.tools.list.execute({}))
+  check('cancel injected nothing', toCancel.delivered.length === 0, JSON.stringify(toCancel.delivered))
 }
 
 console.log(failures === 0 ? '\nall delivery-contract cases passed' : `\n${failures} check(s) FAILED`)

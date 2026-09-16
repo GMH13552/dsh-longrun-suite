@@ -94,13 +94,16 @@ The header reminder menu shows the countdown while reminders are pending and hid
    A message is then built with `source.kind = 'plugin'` and delivered to that agent to wake its driver.
    `header.parentSession` is durable fork lineage (or a child's direct parent) — installation history, never a delivery target.
 3. If a reminder carries a `subject` and a matching background subagent completion notice (`source.kind = 'subagent-settled'`) or shell background job completion notice (`source.plugin = 'tool-jobs'`) enters the parent session's inbox, the host plugin cancels the reminder automatically.
-4. This package's client half fetches `/api/timer-reminders?sessionId=…` every second and renders the countdown from that same file.
+4. This package's client half fetches `/api/timer-reminders?sessionId=…` every second and renders the countdown in the session-header menu.
+5. The menu is also the manual control surface: each row has **补触发** (fire now, in the SAME session) and **取消** buttons, backed by `POST /api/timer-reminders?action=retry|cancel&id=…&sessionId=…`. Without them a parked or overdue entry was visible but unpushable from the browser — only an agent could call `retry_reminder`.
+6. Scheduling the same note for the same session within the same minute reuses the pending entry instead of stacking a second identical reminder (`已设定时提醒` vs `复用已存在的定时提醒`), so an agent asked twice cannot leave two wakes that both fire.
 
 ## Known limitations
 
 - Cold resume requires session persistence to be configured and the owning session to be resumable. Resuming a session mounts the preset named by its durable `agentPreset`; if that preset was deleted or will not mount, the reminder is **parked for manual retry** (`list_reminders` shows the reason) instead of being resumed under a different composition.
 - Transient resume failures (agent-loop not loaded yet at startup, session still owned by an in-flight write handle) are retried with bounded backoff (2s/5s/15s) — never by re-routing the reminder to another session.
 - A cold **subagent child** can only be resumed through its live direct parent. If that parent is offline the reminder is parked for manual retry; the plugin will not wake an archived parent session on your behalf.
+- Cold resume is bounded at 90s: a resume that never settles retries with backoff instead of leaving the entry `delivering` forever (which made it invisible to re-arming and unpushable).
 - The cold-resumed AgentHandle is kept until the plugin is unloaded, so the woken session stays resident after the reminder; a future version may dispose it after the wake turn settles. A handle whose session was closed or replaced in the meantime is dropped and resumed again.
 - Reminders that become due while the DSH process is down are re-armed on startup and fire immediately (instead of being skipped).
 - Delays beyond ~24.8 days are chunked, so they work, but the mechanism is "in-process timer + disk snapshot"; the timer only needs the process to stay up to fire.

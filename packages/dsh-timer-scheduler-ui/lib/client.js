@@ -17,6 +17,9 @@ window.__ModuleLoader__.load({
       '.dsh-sched-grow{min-width:0;flex:1;}',
       '.dsh-sched-note{font-size:12px;line-height:1.35;word-break:break-word;color:var(--dsw-alias-label-primary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;}',
       '.dsh-sched-meta{font-size:11px;margin-top:3px;color:var(--dsw-alias-label-secondary);}',
+      '.dsh-sched-actions{flex-shrink:0;gap:4px;display:flex;align-items:center;}',
+      '.dsh-sched-btn{cursor:pointer;background:0 0;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:6px;padding:1px 6px;font-size:11px;line-height:16px;}',
+      '.dsh-sched-btn:hover,.dsh-sched-btn:focus-visible{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-secondary);}',
     ].join('')
 
     var CSS_ID = 'dsh-timer-scheduler-ui:panel'
@@ -58,6 +61,8 @@ window.__ModuleLoader__.load({
         var setMenuStyle = menuStyleState[1]
         var rootRef = React.useRef(null)
         var buttonRef = React.useRef(null)
+        var sessionIdRef = React.useRef('')
+        var pollRef = React.useRef(null)
 
         React.useEffect(function () {
           var alive = true
@@ -70,6 +75,7 @@ window.__ModuleLoader__.load({
               sessionId = undefined
             }
             if (!sessionId) return
+            sessionIdRef.current = sessionId
             fetch('/api/timer-reminders?sessionId=' + encodeURIComponent(sessionId))
               .then(function (r) { return r.json() })
               .then(function (data) {
@@ -79,6 +85,7 @@ window.__ModuleLoader__.load({
               })
               .catch(function () { if (alive) setReminders([]) })
           }
+          pollRef.current = poll
           poll()
           var stop
           if (typeof ctx.interval === 'function') stop = ctx.interval(poll, 1000)
@@ -86,6 +93,17 @@ window.__ModuleLoader__.load({
           else stop = function () {}
           return function () { alive = false; stop() }
         }, [])
+
+        // A parked or overdue reminder must be pushable from the menu itself:
+        // the entry lives in the host's queue, so the browser sends the same
+        // retry/cancel action the model tools perform.
+        function act(id, action) {
+          var sid = sessionIdRef.current || ''
+          return fetch('/api/timer-reminders?action=' + encodeURIComponent(action) + '&id=' + encodeURIComponent(id) + '&sessionId=' + encodeURIComponent(sid), { method: 'POST' })
+            .then(function (r) { return r.json() })
+            .then(function () { if (pollRef.current) pollRef.current() })
+            .catch(function () { if (pollRef.current) pollRef.current() })
+        }
 
         React.useEffect(function () {
           if (!open) return
@@ -140,6 +158,20 @@ window.__ModuleLoader__.load({
             React.createElement('div', { className: 'dsh-sched-grow' },
               React.createElement('div', { className: 'dsh-sched-note' }, r.note),
               React.createElement('div', { className: 'dsh-sched-meta' }, statusText),
+            ),
+            React.createElement('div', { className: 'dsh-sched-actions' },
+              React.createElement('button', {
+                type: 'button',
+                className: 'dsh-sched-btn',
+                title: '\u7acb\u5373\u8865\u89e6\u53d1\uff08\u540c\u4f1a\u8bdd\uff0c\u4e0d\u6539\u6295\u522b\u7684\u4f1a\u8bdd\uff09',
+                onClick: function () { act(r.id, 'retry') },
+              }, '\u8865\u89e6\u53d1'),
+              React.createElement('button', {
+                type: 'button',
+                className: 'dsh-sched-btn',
+                title: '\u53d6\u6d88\u8fd9\u6761\u63d0\u9192',
+                onClick: function () { act(r.id, 'cancel') },
+              }, '\u53d6\u6d88'),
             ),
           )
         })
