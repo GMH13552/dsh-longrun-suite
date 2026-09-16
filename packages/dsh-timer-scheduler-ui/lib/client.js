@@ -163,7 +163,7 @@ window.__ModuleLoader__.load({
               React.createElement('button', {
                 type: 'button',
                 className: 'dsh-sched-btn',
-                title: '\u7acb\u5373\u8865\u89e6\u53d1\uff08\u540c\u4f1a\u8bdd\uff0c\u4e0d\u6539\u6295\u522b\u7684\u4f1a\u8bdd\uff09',
+                title: '\u7acb\u523b\u89e6\u53d1',
                 onClick: function () { act(r.id, 'retry') },
               }, '\u8865\u89e6\u53d1'),
               React.createElement('button', {
