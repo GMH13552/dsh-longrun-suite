@@ -58,7 +58,7 @@ must be submitted with an explicit package path:
 |---|---|---|---|
 | dsh-mission-control | `packages/dsh-mission-control` | `dsh-mission-control` | 0.2.0 |
 | llm-as-a-verifier | `packages/dsh-plugin-llm-verifier` | `llm-verifier` | 0.9.0 |
-| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.1 |
+| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.2 |
 
 Every subpackage declares the exact DSH compatibility matrix in `package.json`.
 See [`STORE_SUBMISSION.md`](STORE_SUBMISSION.md).

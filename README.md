@@ -67,7 +67,7 @@ DSH 原生的 `goal` / `todo` / `subagent` 适合短任务，但做**长期困�
 |---|---|---|---|
 | dsh-mission-control | `packages/dsh-mission-control` | `dsh-mission-control` | 0.2.0 |
 | llm-as-a-verifier | `packages/dsh-plugin-llm-verifier` | `llm-verifier` | 0.9.0 |
-| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.1 |
+| timer-scheduler-ui | `packages/dsh-timer-scheduler-ui` | `timer-scheduler-ui` | 0.2.2 |
 
 每个子包 `package.json` 都声明了精确的 DSH 兼容矩阵：
 
