@@ -573,7 +573,9 @@ export function apply(ctx) {
       entry.needsManualRetry = false
       entry.immediateRetries = Number(entry.immediateRetries || 0)
       entry.delivering = false
-      entry.missed = true
+      // Only a reminder that is actually past due is "late"; firing a future one
+      // by hand is an early trigger, not a missed one.
+      if (Date.now() >= entry.dueMs) entry.missed = true
       fire(entry)
       return `已触发提醒重试 ${entry.id}（如果之前已注入，可能产生重复上下文）`
     },
@@ -628,7 +630,9 @@ export function apply(ctx) {
       entry.delivering = false
       entry.immediateRetries = 0
       entry.resumeRetries = 0
-      entry.missed = true
+      // Firing a not-yet-due entry by hand is an early trigger, not a late one:
+      // keep the plain "triggered" wording instead of "missed / delayed 0s".
+      if (Date.now() >= entry.dueMs) entry.missed = true
       if (typeof entry.cancel === 'function') { entry.cancel(); entry.cancel = null }
       if (typeof entry.retryTimer === 'function') { entry.retryTimer(); entry.retryTimer = null }
       fire(entry)
