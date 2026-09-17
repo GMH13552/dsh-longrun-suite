@@ -16,6 +16,7 @@
     "cordis.patch.yml",
     "README.md",
     "README.zh.md",
+    "PROFILE_EVIDENCE.md",
     "LICENSE"
   ],
   "keywords": [
@@ -68,7 +69,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node test/delivery.mjs",
+    "test": "node test/delivery.mjs && node test/client.mjs",
     "sync:profile": "node scripts/sync-profile.mjs"
   }
 }

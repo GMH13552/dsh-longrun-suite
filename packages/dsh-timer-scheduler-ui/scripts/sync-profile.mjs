@@ -32,7 +32,10 @@ const FILES = [
   ['package.json', 'package.json'],
   ['README.md', 'README.md'],
   ['README.zh.md', 'README.zh.md'],
+  ['PROFILE_EVIDENCE.md', 'PROFILE_EVIDENCE.md'],
   ['test/delivery.mjs', 'test/delivery.mjs'],
+  ['test/client.mjs', 'test/client.mjs'],
+  ['scripts/sync-profile.mjs', 'scripts/sync-profile.mjs'],
 ]
 
 const profiles = process.argv.slice(2).length > 0
@@ -55,7 +58,14 @@ for (const profile of profiles) {
     if (!existsSync(target)) continue
     mkdirSync(join(target, 'lib'), { recursive: true })
     mkdirSync(join(target, 'test'), { recursive: true })
-    for (const [src, dst] of FILES) copyFileSync(join(packageRoot, src), join(target, dst))
+    mkdirSync(join(target, 'scripts'), { recursive: true })
+    for (const [src, dst] of FILES) {
+      const from = join(packageRoot, src)
+      const to = join(target, dst)
+      // Running this from inside an installed copy would self-copy; skip it.
+      if (resolve(from) === resolve(to)) continue
+      copyFileSync(from, to)
+    }
     console.log(`sync-profile: synced ${target}`)
   }
 }

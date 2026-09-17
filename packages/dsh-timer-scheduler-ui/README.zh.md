@@ -38,41 +38,41 @@ DeepSeek Harness（DSH）插件：给 agent 一个**自主定时器**——让�
 > residentTools: [schedule_reminder, list_reminders, cancel_reminder]
 > ```
 
-1. 把本目录放进 web profile 的工作区，并在 web profile 的 `package.json` 里挂载依赖与 bundle：
+1. 装进某个 profile（这一条命令会同时注册依赖与 bundle，host 半才会被组合进去）：
+
+   ```sh
+   dsh plugin --profile web add /path/to/dsh-timer-scheduler
+   ```
+
+   想手改 profile 的话，`package.json` 里**两个地方都要有**：
 
    ```json
    {
-     "dependencies": {
-       "dsh-timer-scheduler-ui": "file:./packages/dsh-timer-scheduler-ui"
-     },
-     "dsh": {
-       "profile": {
-         "bundles": [
-           "@deepseek-ai/dsh-base",
-           "@deepseek-ai/dsh-web-app",
-           "dsh-timer-scheduler-ui"
-         ]
-       }
-     }
+     "dependencies": { "dsh-timer-scheduler-ui": "file:./packages/dsh-timer-scheduler-ui" },
+     "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-timer-scheduler-ui"] } }
    }
    ```
 
-2. 安装并重启：
+2. 重启 DSH（host 半在服务进程里，只刷新浏览器不够），然后硬刷新页面。
+
+3. 命令行验证——host 半必须同时答得上「列表」和「动作」：
 
    ```sh
-   cd <web-profile>
-   pnpm install
-   # 重启 dsh web（Host 半面运行在服务进程里），然后强制刷新页面
+   curl 'http://127.0.0.1:<port>/api/timer-reminders?sessionId=x'                  # → {"reminders":[]}
+   curl -X POST 'http://127.0.0.1:<port>/api/timer-reminders?action=retry&id=nope&sessionId=x'
+   # → 404 {"ok":false,"error":"not-found","id":"nope"}   （旧 host 在这里返回 200 + 提醒列表）
    ```
 
-3. 验证：
+   然后打开任意会话：头部菜单显示倒计时，每行有 补触发 / 取消。
 
-   ```sh
-   curl 'http://127.0.0.1:<port>/api/timer-reminders?sessionId=x'   # → {"reminders":[]}
-   curl 'http://127.0.0.1:<port>/plugins/dsh-timer-scheduler-ui/client.js'   # → 200 JS
-   ```
+## 独立自检（不需要 DSH 会话）
 
-发布到 npm 后可用 `dsh plugin --profile web add dsh-timer-scheduler-ui`。
+```sh
+node test/delivery.mjs          # 8 类用例：同会话投递、按预设冷恢复、队列动作、去重
+node --check lib/index.js lib/client.js
+```
+
+完整的独立验证是「装进一次性 profile 并真正启动」：命令与实测输出见 `PROFILE_EVIDENCE.md`。
 
 ## 用法
 

@@ -402,6 +402,7 @@ cp -R preset/long-run-router   "$HOME/.dsh/.agent-presets/long-run-router"
 ## 已知边界
 
 - DSH 流式接口不暴露 logprobs，所以 LLM verifier 用温度采样平均近似论文的 logits 期望；
+- `dsh-timer-scheduler` 独立仓库已与这里的包保持同字节同步（0.2.2）；独立验证流程与实测输出见 `packages/dsh-timer-scheduler-ui/PROFILE_EVIDENCE.md`（一次性 profile：装→组合→启动→GET 200 / POST 404）。
 - 改完 `packages/dsh-timer-scheduler-ui/lib/` 后务必跑 `node packages/dsh-timer-scheduler-ui/scripts/sync-profile.mjs`：host loader 可能优先读包根 `index.js`，只更新 `lib/` 会让重启后的 host 跑旧代码（按钮返回 200 但无反应）。
 - 会话头部定时菜单每行可 **补触发/取消**（`POST /api/timer-reminders?action=retry|cancel`），停在队列里的提醒不必等 agent；同一会话同一分钟重复排同一条 note 会复用已有条目。
 - `schedule_reminder` 跨重启冷恢复的是**同一个会话**：普通会话按其持久化 `agentPreset` 挂载原组合（工具集不丢），session-backed 子代理子会话经其仍在线的直接父会话走 `ctx.subagents.sendMessage`。预设被删/父会话离线时提醒停在待人工重试，不会转投给分支之前的父会话；

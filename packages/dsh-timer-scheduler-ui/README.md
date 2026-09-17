@@ -38,41 +38,46 @@ Not published to npm yet. Install from source:
 > residentTools: [schedule_reminder, list_reminders, cancel_reminder]
 > ```
 
-1. Place this directory in the web profile workspace and mount it as a dependency + bundle in the profile's `package.json`:
+1. Install it into a profile (this registers both the dependency and the
+   bundle entry, so the Host half is composed):
+
+   ```sh
+   dsh plugin --profile web add /path/to/dsh-timer-scheduler
+   ```
+
+   Manual equivalent, if you prefer editing the profile yourself — the profile's
+   `package.json` needs the package in **both** places:
 
    ```json
    {
-     "dependencies": {
-       "dsh-timer-scheduler-ui": "file:./packages/dsh-timer-scheduler-ui"
-     },
-     "dsh": {
-       "profile": {
-         "bundles": [
-           "@deepseek-ai/dsh-base",
-           "@deepseek-ai/dsh-web-app",
-           "dsh-timer-scheduler-ui"
-         ]
-       }
-     }
+     "dependencies": { "dsh-timer-scheduler-ui": "file:./packages/dsh-timer-scheduler-ui" },
+     "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-timer-scheduler-ui"] } }
    }
    ```
 
-2. Install and restart:
+2. Restart DSH (the Host half lives in the server process; a browser refresh is
+   not enough), then hard-refresh the page.
+
+3. Verify from a shell — the Host half must answer both the list and an action:
 
    ```sh
-   cd <web-profile>
-   pnpm install
-   # restart dsh web (the Host half runs in the server process), then hard-refresh
+   curl 'http://127.0.0.1:<port>/api/timer-reminders?sessionId=x'                  # → {"reminders":[]}
+   curl -X POST 'http://127.0.0.1:<port>/api/timer-reminders?action=retry&id=nope&sessionId=x'
+   # → 404 {"ok":false,"error":"not-found","id":"nope"}   (an OLD host answers 200 with the reminder list here)
    ```
 
-3. Verify:
+   Then open any session: the session-header menu shows the countdown, and each
+   row has 补触发 / 取消.
 
-   ```sh
-   curl 'http://127.0.0.1:<port>/api/timer-reminders?sessionId=x'   # → {"reminders":[]}
-   curl 'http://127.0.0.1:<port>/plugins/dsh-timer-scheduler-ui/client.js'   # → 200 JS
-   ```
+## Standalone check (no DSH session needed)
 
-Once published to npm: `dsh plugin --profile web add dsh-timer-scheduler-ui`.
+```sh
+node test/delivery.mjs          # 8 cases: same-session delivery, resume w/ preset, queue actions, dedupe
+node --check lib/index.js lib/client.js
+```
+
+A full standalone proof installs into a disposable profile and boots it; the
+exact commands and their recorded output are in `PROFILE_EVIDENCE.md`.
 
 ## Usage
 
